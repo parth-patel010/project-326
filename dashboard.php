@@ -4,51 +4,106 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/includes/auth.php';
 ha_require_login();
+
 $hotelId = (int) $_SESSION['ha_hotel_id'];
 $pdo = admin_db();
-$hotel = ha_hotel();
+$hotel = ha_hotel() ?? [];
 $publicId = (string) ($hotel['public_id'] ?? '');
 $hotelName = (string) ($hotel['name'] ?? 'Hotel');
 
-$stmt = $pdo->prepare(
-    "SELECT COUNT(*) FROM orders WHERE (hotel_db_id = :hid OR restaurant_id = :pid)
-     AND status IN ('placed','preparing','ready','out_for_delivery','awaiting_payment')"
-);
-$stmt->execute([':hid' => $hotelId, ':pid' => $publicId]);
-$onlineOpen = (int) $stmt->fetchColumn();
+$onlineOpen = 0;
+$posOpen = 0;
+$todayOnline = 0;
+$deliveredToday = 0;
+$preparing = 0;
+$ready = 0;
+$dbError = '';
 
-$ps = $pdo->prepare(
-    "SELECT COUNT(*) FROM pos_orders WHERE hotel_id = :hid AND status IN ('open','preparing','ready')"
-);
-$ps->execute([':hid' => $hotelId]);
-$posOpen = (int) $ps->fetchColumn();
+try {
+    $stmt = $pdo->prepare(
+        "SELECT COUNT(*) FROM orders WHERE (hotel_db_id = :hid OR restaurant_id = :pid)
+         AND status IN ('placed','preparing','ready','out_for_delivery','awaiting_payment')"
+    );
+    $stmt->execute([':hid' => $hotelId, ':pid' => $publicId]);
+    $onlineOpen = (int) $stmt->fetchColumn();
 
-$todayOnline = $pdo->prepare(
-    "SELECT COUNT(*) FROM orders WHERE (hotel_db_id = :hid OR restaurant_id = :pid) AND DATE(created_at)=CURDATE()"
-);
-$todayOnline->execute([':hid' => $hotelId, ':pid' => $publicId]);
-$todayOnline = (int) $todayOnline->fetchColumn();
+    $todayStmt = $pdo->prepare(
+        "SELECT COUNT(*) FROM orders WHERE (hotel_db_id = :hid OR restaurant_id = :pid) AND DATE(created_at)=CURDATE()"
+    );
+    $todayStmt->execute([':hid' => $hotelId, ':pid' => $publicId]);
+    $todayOnline = (int) $todayStmt->fetchColumn();
 
-$deliveredToday = $pdo->prepare(
-    "SELECT COUNT(*) FROM orders WHERE (hotel_db_id = :hid OR restaurant_id = :pid) AND status='delivered' AND DATE(created_at)=CURDATE()"
-);
-$deliveredToday->execute([':hid' => $hotelId, ':pid' => $publicId]);
-$deliveredToday = (int) $deliveredToday->fetchColumn();
+    $delStmt = $pdo->prepare(
+        "SELECT COUNT(*) FROM orders WHERE (hotel_db_id = :hid OR restaurant_id = :pid) AND status='delivered' AND DATE(created_at)=CURDATE()"
+    );
+    $delStmt->execute([':hid' => $hotelId, ':pid' => $publicId]);
+    $deliveredToday = (int) $delStmt->fetchColumn();
 
-$preparing = $pdo->prepare(
-    "SELECT COUNT(*) FROM orders WHERE (hotel_db_id = :hid OR restaurant_id = :pid) AND status='preparing'"
-);
-$preparing->execute([':hid' => $hotelId, ':pid' => $publicId]);
-$preparing = (int) $preparing->fetchColumn();
+    $prepStmt = $pdo->prepare(
+        "SELECT COUNT(*) FROM orders WHERE (hotel_db_id = :hid OR restaurant_id = :pid) AND status='preparing'"
+    );
+    $prepStmt->execute([':hid' => $hotelId, ':pid' => $publicId]);
+    $preparing = (int) $prepStmt->fetchColumn();
 
-$ready = $pdo->prepare(
-    "SELECT COUNT(*) FROM orders WHERE (hotel_db_id = :hid OR restaurant_id = :pid) AND status='ready'"
-);
-$ready->execute([':hid' => $hotelId, ':pid' => $publicId]);
-$ready = (int) $ready->fetchColumn();
+    $readyStmt = $pdo->prepare(
+        "SELECT COUNT(*) FROM orders WHERE (hotel_db_id = :hid OR restaurant_id = :pid) AND status='ready'"
+    );
+    $readyStmt->execute([':hid' => $hotelId, ':pid' => $publicId]);
+    $ready = (int) $readyStmt->fetchColumn();
+} catch (Throwable $e) {
+    // Fallback if hotel_db_id column missing (008 migration not applied)
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT COUNT(*) FROM orders WHERE restaurant_id = :pid
+             AND status IN ('placed','preparing','ready','out_for_delivery','awaiting_payment')"
+        );
+        $stmt->execute([':pid' => $publicId]);
+        $onlineOpen = (int) $stmt->fetchColumn();
+
+        $todayStmt = $pdo->prepare(
+            "SELECT COUNT(*) FROM orders WHERE restaurant_id = :pid AND DATE(created_at)=CURDATE()"
+        );
+        $todayStmt->execute([':pid' => $publicId]);
+        $todayOnline = (int) $todayStmt->fetchColumn();
+
+        $delStmt = $pdo->prepare(
+            "SELECT COUNT(*) FROM orders WHERE restaurant_id = :pid AND status='delivered' AND DATE(created_at)=CURDATE()"
+        );
+        $delStmt->execute([':pid' => $publicId]);
+        $deliveredToday = (int) $delStmt->fetchColumn();
+
+        $prepStmt = $pdo->prepare(
+            "SELECT COUNT(*) FROM orders WHERE restaurant_id = :pid AND status='preparing'"
+        );
+        $prepStmt->execute([':pid' => $publicId]);
+        $preparing = (int) $prepStmt->fetchColumn();
+
+        $readyStmt = $pdo->prepare(
+            "SELECT COUNT(*) FROM orders WHERE restaurant_id = :pid AND status='ready'"
+        );
+        $readyStmt->execute([':pid' => $publicId]);
+        $ready = (int) $readyStmt->fetchColumn();
+    } catch (Throwable $e2) {
+        $dbError = 'Orders query failed: ' . $e2->getMessage();
+        error_log('hotel dashboard orders: ' . $e2->getMessage());
+    }
+}
+
+try {
+    $ps = $pdo->prepare(
+        "SELECT COUNT(*) FROM pos_orders WHERE hotel_id = :hid AND status IN ('open','preparing','ready')"
+    );
+    $ps->execute([':hid' => $hotelId]);
+    $posOpen = (int) $ps->fetchColumn();
+} catch (Throwable $e) {
+    // pos_orders table may be missing on partial migrations
+    error_log('hotel dashboard pos: ' . $e->getMessage());
+}
 
 ha_layout_start('Dashboard', 'dashboard.php', 'Welcome back — ' . $hotelName);
-?>
+if ($dbError !== ''): ?>
+  <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"><?= ha_h($dbError) ?></div>
+<?php endif; ?>
 
 <div class="mb-8">
   <h3 class="text-xl font-bold text-gray-900 mb-4">Order overview</h3>
@@ -83,7 +138,7 @@ ha_layout_start('Dashboard', 'dashboard.php', 'Welcome back — ' . $hotelName);
     </div>
 
     <div class="bg-orange-50 rounded-xl border border-orange-100 p-4 shadow-sm h-[100px] flex items-center justify-between gap-4">
-      <span class="material-icons-outlined text-orange-600 text-3xl shrink-0">skillet</span>
+      <span class="material-icons-outlined text-orange-600 text-3xl shrink-0">restaurant</span>
       <p class="text-sm font-medium text-gray-800 flex-1">Preparing</p>
       <p class="text-xl font-bold text-orange-600"><?= $preparing ?></p>
     </div>

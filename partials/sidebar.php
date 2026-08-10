@@ -1,6 +1,12 @@
 <?php
 declare(strict_types=1);
 
+// Direct browser access is not allowed — included from layout only.
+if (!function_exists('ha_h')) {
+    http_response_code(403);
+    exit('Forbidden');
+}
+
 /** @var string $active */
 $active = $active ?? '';
 $hotelName = $hotelName ?? 'Hotel';
