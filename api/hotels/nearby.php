@@ -35,17 +35,24 @@ foreach ($all as $hotel) {
     if ($km > $maxKm) {
         continue;
     }
-    $mins = H3::approxMinutesFromKm($km);
-    // Optional OSRM refine for first 15
+    $travelMins = H3::approxMinutesFromKm($km);
     if (count($nearby) < 15) {
         $route = $osrm->route($lat, $lng, (float) $hotel['latitude'], (float) $hotel['longitude']);
         if (!empty($route['ok'])) {
             $km = (float) ($route['distance_km'] ?? $km);
-            $mins = (int) ($route['duration_min'] ?? $mins);
+            $travelMins = (int) ($route['duration_min'] ?? $travelMins);
         }
     }
+    // prep_mins from present_hotel = avg of last 5 order prep durations (default 19)
+    $prepMins = (int) ($hotel['prep_mins'] ?? FM_DEFAULT_PREP_MINS);
+    if ($prepMins <= 0) {
+        $prepMins = FM_DEFAULT_PREP_MINS;
+    }
     $hotel['km'] = round($km, 2);
-    $hotel['mins'] = $mins;
+    $hotel['travel_mins'] = $travelMins;
+    $hotel['prep_mins'] = $prepMins;
+    // Customer-facing ETA = kitchen prep + road travel
+    $hotel['mins'] = $prepMins + $travelMins;
     $hotel['fee'] = Settings::deliveryChargeForKm($km);
     $nearby[] = $hotel;
 }

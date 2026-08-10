@@ -21,6 +21,29 @@ function ha_h(?string $s): string
     return htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
 }
 
+/** Cached SHOW COLUMNS check — missing migrate columns must not crash admin pages. */
+function ha_col_exists(string $table, string $column, ?PDO $pdo = null): bool
+{
+    static $cache = [];
+    $key = $table . '.' . $column;
+    if (array_key_exists($key, $cache)) {
+        return $cache[$key];
+    }
+    $pdo = $pdo ?? admin_db();
+    $table = preg_replace('/[^a-zA-Z0-9_]/', '', $table) ?? '';
+    $column = preg_replace('/[^a-zA-Z0-9_]/', '', $column) ?? '';
+    if ($table === '' || $column === '') {
+        return $cache[$key] = false;
+    }
+    try {
+        $stmt = $pdo->query("SHOW COLUMNS FROM `{$table}` LIKE " . $pdo->quote($column));
+        $cache[$key] = (bool) ($stmt && $stmt->fetch());
+    } catch (Throwable $e) {
+        $cache[$key] = false;
+    }
+    return $cache[$key];
+}
+
 function ha_hotel(): ?array
 {
     if (empty($_SESSION['ha_hotel_id'])) {
@@ -50,6 +73,14 @@ function ha_render_sidebar(string $active, string $hotelName): void
                 ['href' => 'dashboard.php', 'icon' => 'dashboard', 'label' => 'Dashboard'],
                 ['href' => 'online-orders.php', 'icon' => 'smartphone', 'label' => 'Online Orders'],
                 ['href' => 'pos-orders.php', 'icon' => 'point_of_sale', 'label' => 'POS Orders'],
+                ['href' => 'pos-billing.php', 'icon' => 'receipt_long', 'label' => 'New bill'],
+            ],
+        ],
+        [
+            'label' => 'Menu',
+            'items' => [
+                ['href' => 'categories.php', 'icon' => 'category', 'label' => 'Categories'],
+                ['href' => 'menu-items.php', 'icon' => 'restaurant_menu', 'label' => 'Menu items'],
             ],
         ],
         [
@@ -57,6 +88,13 @@ function ha_render_sidebar(string $active, string $hotelName): void
             'items' => [
                 ['href' => 'offers.php', 'icon' => 'local_offer', 'label' => 'Offers'],
                 ['href' => 'discount-settings.php', 'icon' => 'percent', 'label' => 'Discounts'],
+            ],
+        ],
+        [
+            'label' => 'Hotel',
+            'items' => [
+                ['href' => 'analytics.php', 'icon' => 'analytics', 'label' => 'Analytics'],
+                ['href' => 'hotel-settings.php', 'icon' => 'settings', 'label' => 'Settings'],
             ],
         ],
     ];

@@ -9,6 +9,7 @@ require_once __DIR__ . '/api/lib/Realtime.php';
 require_once __DIR__ . '/api/lib/Settings.php';
 require_once __DIR__ . '/api/lib/H3.php';
 require_once __DIR__ . '/api/lib/Dispatch.php';
+require_once __DIR__ . '/api/lib/order_status.php';
 
 ha_require_login();
 $hotelId = (int) $_SESSION['ha_hotel_id'];
@@ -31,13 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $order = $stmt->fetch();
         if ($order) {
             $newStatus = $map[$action];
-            if ($action === 'accept' && empty($order['hotel_db_id'])) {
-                $pdo->prepare('UPDATE orders SET hotel_db_id = :hid, status = :s WHERE id = :id')
-                    ->execute([':hid' => $hotelId, ':s' => $newStatus, ':id' => $oid]);
-            } else {
-                $pdo->prepare('UPDATE orders SET status = :s WHERE id = :id')
-                    ->execute([':s' => $newStatus, ':id' => $oid]);
-            }
+            fm_order_set_status($pdo, $oid, $newStatus, $hotelId);
             Realtime::emit('order.status', [
                 'order_id' => $order['public_id'],
                 'status' => $newStatus,
@@ -65,6 +60,22 @@ $rows = $stmt->fetchAll();
 ha_layout_start('Online Orders', 'online-orders.php', 'Accept app orders and share pickup OTP with riders');
 if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
 
+<?php
+$statusBadge = static function (string $status): string {
+    $map = [
+        'placed' => 'bg-blue-100 text-blue-800',
+        'paid' => 'bg-blue-100 text-blue-800',
+        'preparing' => 'bg-amber-100 text-amber-800',
+        'ready' => 'bg-emerald-100 text-emerald-800',
+        'out_for_delivery' => 'bg-indigo-100 text-indigo-800',
+        'delivered' => 'bg-green-100 text-green-800',
+        'cancelled' => 'bg-red-100 text-red-800',
+    ];
+    $cls = $map[$status] ?? 'bg-gray-100 text-gray-800';
+    return '<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium ' . $cls . '">' . htmlspecialchars($status, ENT_QUOTES, 'UTF-8') . '</span>';
+};
+?>
+<p class="muted mb-3">Auto-refreshes every 15 seconds</p>
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
   <div class="overflow-x-auto">
     <table>
@@ -90,7 +101,7 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
               <p class="muted"><?= ha_h($r['customer_phone']) ?></p>
             </td>
             <td>
-              <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"><?= ha_h($r['status']) ?></span>
+              <?= $statusBadge((string)$r['status']) ?>
               <p class="muted mt-1"><?= ha_h($r['payment_mode'] ?? '') ?></p>
             </td>
             <td class="font-semibold">₹<?= number_format(((int)$r['total_paise'])/100, 2) ?></td>
@@ -122,6 +133,13 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
                     </button>
                   </form>
                 <?php endif; ?>
+                <?php if (in_array($r['status'], ['placed','paid','preparing','ready'], true)): ?>
+                  <form method="post" class="inline" onsubmit="return confirm('Cancel this order?')">
+                    <input type="hidden" name="order_id" value="<?= (int)$r['id'] ?>">
+                    <input type="hidden" name="action" value="cancel">
+                    <button class="btn secondary !py-1.5 !px-3 text-xs" type="submit">Cancel</button>
+                  </form>
+                <?php endif; ?>
               </div>
             </td>
           </tr>
@@ -133,4 +151,5 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
     </table>
   </div>
 </div>
+<script>setTimeout(function(){ window.location.reload(); }, 15000);</script>
 <?php ha_layout_end(); ?>

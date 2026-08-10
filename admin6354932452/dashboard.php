@@ -9,34 +9,69 @@ $pdo = admin_db();
 $user = sa_user();
 $adminName = (string) ($user['name'] ?? 'Admin');
 
-$onlineOrders = (int) $pdo->query(
-    "SELECT COUNT(*) FROM orders WHERE status NOT IN ('cancelled','payment_failed','delivered') AND payment_mode IN ('cod','prepaid')"
-)->fetchColumn();
-$todayOnline = (int) $pdo->query(
-    "SELECT COUNT(*) FROM orders WHERE DATE(created_at) = CURDATE()"
-)->fetchColumn();
-$delivered = (int) $pdo->query(
-    "SELECT COUNT(*) FROM orders WHERE status = 'delivered'"
-)->fetchColumn();
-$cancelled = (int) $pdo->query(
-    "SELECT COUNT(*) FROM orders WHERE status = 'cancelled'"
-)->fetchColumn();
-$partnersOnline = (int) $pdo->query(
-    "SELECT COUNT(*) FROM delivery_partners WHERE is_online = 1 AND status = 'active'"
-)->fetchColumn();
-$partnersTotal = (int) $pdo->query(
-    "SELECT COUNT(*) FROM delivery_partners WHERE status = 'active'"
-)->fetchColumn();
-$codHold = (float) $pdo->query(
-    "SELECT COALESCE(SUM(amount),0) FROM cod_holds WHERE status = 'held'"
-)->fetchColumn();
-$hotels = (int) $pdo->query('SELECT COUNT(*) FROM hotels WHERE is_active = 1')->fetchColumn();
-$unassigned = (int) $pdo->query(
-    "SELECT COUNT(*) FROM orders WHERE assigned_partner_id IS NULL AND status NOT IN ('cancelled','payment_failed','delivered','awaiting_payment')"
-)->fetchColumn();
+$onlineOrders = 0;
+$todayOnline = 0;
+$delivered = 0;
+$cancelled = 0;
+$partnersOnline = 0;
+$partnersTotal = 0;
+$codHold = 0.0;
+$hotels = 0;
+$unassigned = 0;
+$warn = '';
+
+$count = static function (PDO $pdo, string $sql): int {
+    return (int) $pdo->query($sql)->fetchColumn();
+};
+
+try {
+    $onlineOrders = $count(
+        $pdo,
+        "SELECT COUNT(*) FROM orders WHERE status NOT IN ('cancelled','payment_failed','delivered') AND payment_mode IN ('cod','prepaid')"
+    );
+    $todayOnline = $count($pdo, 'SELECT COUNT(*) FROM orders WHERE DATE(created_at) = CURDATE()');
+    $delivered = $count($pdo, "SELECT COUNT(*) FROM orders WHERE status = 'delivered'");
+    $cancelled = $count($pdo, "SELECT COUNT(*) FROM orders WHERE status = 'cancelled'");
+} catch (Throwable $e) {
+    $warn = 'Orders stats failed: ' . $e->getMessage();
+    error_log('sa dashboard orders: ' . $e->getMessage());
+}
+
+try {
+    $partnersOnline = $count($pdo, "SELECT COUNT(*) FROM delivery_partners WHERE is_online = 1 AND status = 'active'");
+    $partnersTotal = $count($pdo, "SELECT COUNT(*) FROM delivery_partners WHERE status = 'active'");
+} catch (Throwable $e) {
+    error_log('sa dashboard partners: ' . $e->getMessage());
+}
+
+try {
+    $codHold = (float) $pdo->query("SELECT COALESCE(SUM(amount),0) FROM cod_holds WHERE status = 'held'")->fetchColumn();
+} catch (Throwable $e) {
+    error_log('sa dashboard cod: ' . $e->getMessage());
+}
+
+try {
+    $hotels = $count($pdo, 'SELECT COUNT(*) FROM hotels WHERE is_active = 1');
+} catch (Throwable $e) {
+    error_log('sa dashboard hotels: ' . $e->getMessage());
+}
+
+try {
+    $unassigned = $count(
+        $pdo,
+        "SELECT COUNT(*) FROM orders WHERE assigned_partner_id IS NULL AND status NOT IN ('cancelled','payment_failed','delivered','awaiting_payment')"
+    );
+} catch (Throwable $e) {
+    // Column missing until migrate_orders_dispatch.php is run
+    $warn = ($warn !== '' ? $warn . ' · ' : '')
+        . 'Run: php /var/www/foodmitra/api/bin/migrate_orders_dispatch.php';
+    error_log('sa dashboard unassigned: ' . $e->getMessage());
+}
 
 sa_layout_start('Dashboard', 'dashboard.php', 'Welcome, ' . $adminName . '. Manage platform orders and partners.');
-?>
+if ($warn !== ''): ?>
+  <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"><?= sa_h($warn) ?></div>
+<?php endif; ?>
 
 <div class="mb-8">
   <div class="flex items-center justify-between mb-4">

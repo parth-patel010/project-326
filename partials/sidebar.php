@@ -18,6 +18,14 @@ $nav = [
             ['href' => 'dashboard.php', 'icon' => 'dashboard', 'label' => 'Dashboard'],
             ['href' => 'online-orders.php', 'icon' => 'smartphone', 'label' => 'Online Orders'],
             ['href' => 'pos-orders.php', 'icon' => 'point_of_sale', 'label' => 'POS Orders'],
+            ['href' => 'pos-billing.php', 'icon' => 'receipt_long', 'label' => 'New bill'],
+        ],
+    ],
+    [
+        'label' => 'Menu',
+        'items' => [
+            ['href' => 'categories.php', 'icon' => 'category', 'label' => 'Categories'],
+            ['href' => 'menu-items.php', 'icon' => 'restaurant_menu', 'label' => 'Menu items'],
         ],
     ],
     [
@@ -25,6 +33,13 @@ $nav = [
         'items' => [
             ['href' => 'offers.php', 'icon' => 'local_offer', 'label' => 'Offers'],
             ['href' => 'discount-settings.php', 'icon' => 'percent', 'label' => 'Discounts'],
+        ],
+    ],
+    [
+        'label' => 'Hotel',
+        'items' => [
+            ['href' => 'analytics.php', 'icon' => 'analytics', 'label' => 'Analytics'],
+            ['href' => 'hotel-settings.php', 'icon' => 'settings', 'label' => 'Settings'],
         ],
     ],
 ];
@@ -39,7 +54,6 @@ $nav = [
       <p class="text-xs text-gray-500 truncate"><?= ha_h($hotelName) ?></p>
     </div>
   </div>
-
   <nav class="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
     <?php foreach ($nav as $group): ?>
       <div>
@@ -57,7 +71,6 @@ $nav = [
         </div>
       </div>
     <?php endforeach; ?>
-
     <a href="logout.php" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 mt-2">
       <span class="material-icons-outlined text-[20px]">logout</span>
       <span>Logout</span>
