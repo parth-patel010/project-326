@@ -47,20 +47,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-sa_layout_start('Add Delivery Partner', 'delivery-partner-add.php');
+sa_layout_start('Add Delivery Partner', 'delivery-partner-add.php', 'Create a rider account for the partner app');
 if ($flash): ?><div class="flash"><?= sa_h($flash) ?></div><?php endif; ?>
-<?php if ($error): ?><div class="card" style="border-color:#ef9a9a;background:#ffebee"><?= sa_h($error) ?></div><?php endif; ?>
-<form method="post" class="card">
-  <label>Full name</label>
-  <input class="input" name="full_name" required>
-  <label>Phone</label>
-  <input class="input" name="phone" required maxlength="10">
-  <label>Password</label>
-  <input class="input" type="password" name="password" required>
-  <label>Service radius (km)</label>
-  <input class="input" type="number" step="0.1" name="service_radius_km" value="<?= sa_h((string)$defaultRadius) ?>">
-  <label><input type="checkbox" name="is_verified" value="1"> Driver verified</label>
-  <label><input type="checkbox" name="has_insurance" value="1"> Has insurance</label>
-  <div style="margin-top:12px"><button class="btn" type="submit">Create partner</button></div>
+<?php if ($error): ?><div class="sa-alert-error"><?= sa_h($error) ?></div><?php endif; ?>
+<form method="post" class="card max-w-2xl">
+  <h3>Partner details</h3>
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+    <div class="sm:col-span-2"><label>Full name</label><input class="input" name="full_name" required></div>
+    <div><label>Phone</label><input class="input" name="phone" required maxlength="10"></div>
+    <div><label>Password</label><input class="input" type="password" name="password" required></div>
+    <div><label>Service radius (km)</label><input class="input" type="number" step="0.1" name="service_radius_km" value="<?= sa_h((string)$defaultRadius) ?>"></div>
+  </div>
+  <div class="flex flex-wrap gap-4 mb-4 mt-1">
+    <label class="!mb-0 flex items-center gap-2 font-medium text-sm text-gray-700"><input type="checkbox" name="is_verified" value="1" class="rounded border-gray-300 text-primary"> Driver verified</label>
+    <label class="!mb-0 flex items-center gap-2 font-medium text-sm text-gray-700"><input type="checkbox" name="has_insurance" value="1" class="rounded border-gray-300 text-primary"> Has insurance</label>
+  </div>
+  <button class="btn" type="submit">
+    <span class="material-icons-outlined text-[18px]">person_add</span> Create partner
+  </button>
 </form>
 <?php sa_layout_end(); ?>

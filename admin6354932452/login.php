@@ -13,43 +13,96 @@ $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim((string) ($_POST['email'] ?? ''));
     $pass = (string) ($_POST['password'] ?? '');
-    $stmt = admin_db()->prepare('SELECT * FROM admin_users WHERE email = :e AND is_active = 1 LIMIT 1');
-    $stmt->execute([':e' => $email]);
-    $user = $stmt->fetch();
-    if ($user && password_verify($pass, $user['password_hash'])) {
-        $_SESSION['sa_user_id'] = (int) $user['id'];
-        header('Location: dashboard.php');
-        exit;
+    try {
+        $stmt = admin_db()->prepare('SELECT * FROM admin_users WHERE email = :e AND is_active = 1 LIMIT 1');
+        $stmt->execute([':e' => $email]);
+        $user = $stmt->fetch();
+        if ($user && password_verify($pass, $user['password_hash'])) {
+            $_SESSION['sa_user_id'] = (int) $user['id'];
+            header('Location: dashboard.php');
+            exit;
+        }
+        $error = 'Invalid email or password';
+    } catch (Throwable $e) {
+        $error = 'Server error (DB). Check api/.env credentials.';
+        error_log('admin login: ' . $e->getMessage());
     }
-    $error = 'Invalid email or password';
 }
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Super Admin Login · FoodMitra</title>
-  <style>
-    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#12350c,#1F7A32);font-family:Segoe UI,system-ui,sans-serif}
-    .box{width:100%;max-width:400px;background:#fff;border-radius:16px;padding:28px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
-    h1{margin:0 0 6px;font-size:22px;color:#195510}p{margin:0 0 18px;color:#6b6b6b;font-size:14px}
-    label{font-size:13px;font-weight:700;display:block;margin-bottom:4px}
-    input{width:100%;padding:12px;border:1px solid #e5e5e5;border-radius:10px;margin-bottom:12px;font-size:14px;box-sizing:border-box}
-    button{width:100%;padding:12px;border:0;border-radius:10px;background:#195510;color:#fff;font-weight:800;cursor:pointer}
-    .err{background:#ffebee;color:#c62828;padding:10px;border-radius:8px;margin-bottom:12px;font-size:13px}
-  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { primary: "#195510", "primary-hover": "#1F7A32" },
+          fontFamily: { sans: ["Inter", "sans-serif"] }
+        }
+      }
+    };
+  </script>
 </head>
-<body>
-  <form class="box" method="post">
-    <h1>FoodMitra Super Admin</h1>
-    <p>Sign in to manage platform settings</p>
-    <?php if ($error): ?><div class="err"><?= htmlspecialchars($error) ?></div><?php endif; ?>
-    <label>Email</label>
-    <input type="email" name="email" required value="admin@foodmitra.com">
-    <label>Password</label>
-    <input type="password" name="password" required placeholder="admin123">
-    <button type="submit">Login</button>
-  </form>
+<body class="bg-gray-100 font-sans antialiased min-h-screen flex items-center justify-center p-4">
+  <div class="w-full max-w-md">
+    <div class="bg-white rounded-2xl shadow-lg p-8 md:p-10">
+      <div class="flex justify-center mb-6">
+        <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center">
+          <span class="material-icons-outlined text-white text-3xl">admin_panel_settings</span>
+        </div>
+      </div>
+      <h1 class="text-2xl font-bold text-gray-900 text-center mb-2">Super Admin Login</h1>
+      <p class="text-gray-500 text-center mb-8">Sign in to manage FoodMitra platform</p>
+
+      <?php if ($error): ?>
+        <div class="mb-5 text-sm text-red-600 bg-red-50 border border-red-100 p-3 rounded-lg"><?= sa_h($error) ?></div>
+      <?php endif; ?>
+
+      <form method="post" class="space-y-5">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2" for="email">Email</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <span class="material-icons-outlined text-gray-400 text-xl">email</span>
+            </div>
+            <input type="email" id="email" name="email" required
+                   class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                   placeholder="Admin email" value="<?= sa_h((string)($_POST['email'] ?? '')) ?>">
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2" for="password">Password</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <span class="material-icons-outlined text-gray-400 text-xl">vpn_key</span>
+            </div>
+            <input type="password" id="password" name="password" required
+                   class="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                   placeholder="Password">
+            <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 pr-3 flex items-center">
+              <span id="toggleIcon" class="material-icons-outlined text-gray-400 text-xl hover:text-gray-600">visibility</span>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="w-full py-3 bg-primary hover:bg-primary-hover text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2">
+          <span class="material-icons-outlined text-xl">login</span> Sign In
+        </button>
+      </form>
+    </div>
+  </div>
+  <script>
+    document.getElementById('togglePassword').addEventListener('click', function () {
+      var p = document.getElementById('password');
+      var i = document.getElementById('toggleIcon');
+      if (p.type === 'password') { p.type = 'text'; i.textContent = 'visibility_off'; }
+      else { p.type = 'password'; i.textContent = 'visibility'; }
+    });
+  </script>
 </body>
 </html>

@@ -60,42 +60,63 @@ if (!is_array($config) || !$config) {
     $config = [['from_km' => 0, 'to_km' => 10, 'charge' => 29]];
 }
 
-sa_layout_start('Settings', 'settings.php');
+sa_layout_start('Settings', 'settings.php', 'Commission, radius, and delivery charges');
 if ($flash): ?><div class="flash"><?= sa_h($flash) ?></div><?php endif; ?>
-<form method="post" class="card">
-  <h3 style="margin-top:0">Commission & radius</h3>
-  <label>Commission %</label>
-  <input class="input" type="number" step="0.01" name="delivery_commission_percent" value="<?= sa_h((string)$s['delivery_commission_percent']) ?>">
-  <label>Max delivery / nearby hotel radius (km)</label>
-  <input class="input" type="number" step="0.1" name="max_delivery_radius_km" value="<?= sa_h((string)$s['max_delivery_radius_km']) ?>">
-  <p class="muted">Users only see hotels within this radius of their GPS.</p>
-  <label>Default delivery partner service radius (km)</label>
-  <input class="input" type="number" step="0.1" name="default_partner_radius_km" value="<?= sa_h((string)$s['default_partner_radius_km']) ?>">
-  <label>Partner earn fixed (₹ per order)</label>
-  <input class="input" type="number" step="0.01" name="partner_earn_fixed" value="<?= sa_h((string)($s['partner_earn_fixed'] ?? 30)) ?>">
-  <label>Offer TTL seconds</label>
-  <input class="input" type="number" name="offer_ttl_seconds" value="<?= sa_h((string)($s['offer_ttl_seconds'] ?? 60)) ?>">
-  <label><input type="checkbox" name="cod_hold_enabled" value="1" <?= !empty($s['cod_hold_enabled']) ? 'checked' : '' ?>> Enable COD hold on partners</label>
+<form method="post" class="card max-w-3xl">
+  <h3>Commission & radius</h3>
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+    <div>
+      <label>Commission %</label>
+      <input class="input" type="number" step="0.01" name="delivery_commission_percent" value="<?= sa_h((string)$s['delivery_commission_percent']) ?>">
+    </div>
+    <div>
+      <label>Max delivery / nearby hotel radius (km)</label>
+      <input class="input" type="number" step="0.1" name="max_delivery_radius_km" value="<?= sa_h((string)$s['max_delivery_radius_km']) ?>">
+      <p class="muted !-mt-2 mb-3">Users only see hotels within this radius of their GPS.</p>
+    </div>
+    <div>
+      <label>Default partner service radius (km)</label>
+      <input class="input" type="number" step="0.1" name="default_partner_radius_km" value="<?= sa_h((string)$s['default_partner_radius_km']) ?>">
+    </div>
+    <div>
+      <label>Partner earn fixed (₹ per order)</label>
+      <input class="input" type="number" step="0.01" name="partner_earn_fixed" value="<?= sa_h((string)($s['partner_earn_fixed'] ?? 30)) ?>">
+    </div>
+    <div>
+      <label>Offer TTL seconds</label>
+      <input class="input" type="number" name="offer_ttl_seconds" value="<?= sa_h((string)($s['offer_ttl_seconds'] ?? 60)) ?>">
+    </div>
+  </div>
+  <label class="!mb-4 flex items-center gap-2 font-medium text-sm text-gray-700">
+    <input type="checkbox" name="cod_hold_enabled" value="1" <?= !empty($s['cod_hold_enabled']) ? 'checked' : '' ?> class="rounded border-gray-300 text-primary">
+    Enable COD hold on partners
+  </label>
 
   <h3>Delivery charge by km range</h3>
-  <div id="ranges">
+  <div id="ranges" class="space-y-3 mb-3">
     <?php foreach ($config as $i => $row): ?>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-        <div><label>From km</label><input class="input" name="from_km[]" type="number" step="0.1" value="<?= sa_h((string)($row['from_km'] ?? 0)) ?>"></div>
-        <div><label>To km</label><input class="input" name="to_km[]" type="number" step="0.1" value="<?= sa_h((string)($row['to_km'] ?? 0)) ?>"></div>
-        <div><label>Charge ₹</label><input class="input" name="charge[]" type="number" step="0.01" value="<?= sa_h((string)($row['charge'] ?? 0)) ?>"></div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+        <div><label>From km</label><input class="input !mb-0" name="from_km[]" type="number" step="0.1" value="<?= sa_h((string)($row['from_km'] ?? 0)) ?>"></div>
+        <div><label>To km</label><input class="input !mb-0" name="to_km[]" type="number" step="0.1" value="<?= sa_h((string)($row['to_km'] ?? 0)) ?>"></div>
+        <div><label>Charge ₹</label><input class="input !mb-0" name="charge[]" type="number" step="0.01" value="<?= sa_h((string)($row['charge'] ?? 0)) ?>"></div>
       </div>
     <?php endforeach; ?>
   </div>
-  <button type="button" class="btn secondary" onclick="addRange()">Add range</button>
-  <div style="margin-top:16px"><button class="btn" type="submit">Save settings</button></div>
+  <div class="flex flex-wrap gap-3">
+    <button type="button" class="btn secondary" onclick="addRange()">
+      <span class="material-icons-outlined text-[18px]">add</span> Add range
+    </button>
+    <button class="btn" type="submit">
+      <span class="material-icons-outlined text-[18px]">save</span> Save settings
+    </button>
+  </div>
 </form>
 <script>
 function addRange(){
   const wrap=document.getElementById('ranges');
   const div=document.createElement('div');
-  div.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px';
-  div.innerHTML='<div><label>From km</label><input class="input" name="from_km[]" type="number" step="0.1" value="0"></div><div><label>To km</label><input class="input" name="to_km[]" type="number" step="0.1" value="10"></div><div><label>Charge ₹</label><input class="input" name="charge[]" type="number" step="0.01" value="29"></div>';
+  div.className='grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100';
+  div.innerHTML='<div><label>From km</label><input class="input !mb-0" name="from_km[]" type="number" step="0.1" value="0"></div><div><label>To km</label><input class="input !mb-0" name="to_km[]" type="number" step="0.1" value="10"></div><div><label>Charge ₹</label><input class="input !mb-0" name="charge[]" type="number" step="0.01" value="29"></div>';
   wrap.appendChild(div);
 }
 </script>

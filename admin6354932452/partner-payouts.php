@@ -31,9 +31,10 @@ $rows = $pdo->query(
 )->fetchAll();
 $partners = $pdo->query('SELECT id, full_name, phone FROM delivery_partners ORDER BY full_name')->fetchAll();
 
-sa_layout_start('Partner Payouts', 'partner-payouts.php');
+sa_layout_start('Partner Payouts', 'partner-payouts.php', 'Settle delivery partner earnings');
 if ($flash): ?><div class="flash"><?= sa_h($flash) ?></div><?php endif; ?>
-<form method="post" class="card">
+<form method="post" class="card max-w-xl">
+  <h3>New payout</h3>
   <label>Partner</label>
   <select name="target_id" class="input">
     <?php foreach ($partners as $p): ?>
@@ -46,20 +47,29 @@ if ($flash): ?><div class="flash"><?= sa_h($flash) ?></div><?php endif; ?>
   <input class="input" name="note">
   <button class="btn" type="submit">Create payout</button>
 </form>
-<div class="card">
-  <table>
-    <thead><tr><th>ID</th><th>Partner</th><th>Amount</th><th>Status</th><th></th></tr></thead>
-    <tbody>
-      <?php foreach ($rows as $r): ?>
-        <tr>
-          <td><?= (int)$r['id'] ?></td>
-          <td><?= sa_h($r['full_name'] ?? (string)$r['target_id']) ?></td>
-          <td>₹<?= number_format((float)$r['amount'], 2) ?></td>
-          <td><?= sa_h($r['status']) ?></td>
-          <td><?php if ($r['status']==='pending'): ?><a class="btn secondary" href="?mark=<?= (int)$r['id'] ?>">Mark paid</a><?php endif; ?></td>
-        </tr>
-      <?php endforeach; ?>
-    </tbody>
-  </table>
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+  <div class="overflow-x-auto">
+    <table>
+      <thead><tr><th>ID</th><th>Partner</th><th>Amount</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        <?php foreach ($rows as $r): ?>
+          <tr>
+            <td><?= (int)$r['id'] ?></td>
+            <td class="font-medium"><?= sa_h($r['full_name'] ?? (string)$r['target_id']) ?></td>
+            <td class="font-semibold">₹<?= number_format((float)$r['amount'], 2) ?></td>
+            <td>
+              <?php if ($r['status'] === 'paid'): ?>
+                <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">paid</span>
+              <?php else: ?>
+                <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800"><?= sa_h($r['status']) ?></span>
+              <?php endif; ?>
+            </td>
+            <td><?php if ($r['status']==='pending'): ?><a class="btn secondary !py-1.5 !px-3 text-xs" href="?mark=<?= (int)$r['id'] ?>">Mark paid</a><?php endif; ?></td>
+          </tr>
+        <?php endforeach; ?>
+        <?php if (!$rows): ?><tr><td colspan="5" class="text-center text-gray-500 py-10">No payouts yet</td></tr><?php endif; ?>
+      </tbody>
+    </table>
+  </div>
 </div>
 <?php sa_layout_end(); ?>

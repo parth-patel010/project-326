@@ -23,55 +23,147 @@ function ha_h(?string $s): string
 
 function ha_hotel(): ?array
 {
-    if (empty($_SESSION['ha_hotel_id'])) return null;
+    if (empty($_SESSION['ha_hotel_id'])) {
+        return null;
+    }
     $stmt = admin_db()->prepare('SELECT * FROM hotels WHERE id = :id');
     $stmt->execute([':id' => $_SESSION['ha_hotel_id']]);
     return $stmt->fetch() ?: null;
 }
 
-function ha_layout_start(string $title, string $active = ''): void
+function ha_user(): ?array
+{
+    if (empty($_SESSION['ha_user_id'])) {
+        return null;
+    }
+    $stmt = admin_db()->prepare('SELECT * FROM hotel_users WHERE id = :id AND is_active = 1');
+    $stmt->execute([':id' => $_SESSION['ha_user_id']]);
+    return $stmt->fetch() ?: null;
+}
+
+/**
+ * @param string $title Page title
+ * @param string $active Active nav href
+ * @param string $subtitle Optional subtitle
+ */
+function ha_layout_start(string $title, string $active = '', string $subtitle = ''): void
 {
     $hotel = ha_hotel();
-    echo '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">';
-    echo '<title>' . ha_h($title) . ' · Hotel Admin</title>';
+    $user = ha_user();
+    $hotelName = (string) ($hotel['name'] ?? 'Hotel');
+    $adminName = (string) ($user['name'] ?? $hotelName);
+    $adminEmail = (string) ($user['email'] ?? '');
+    $active = $active;
+
+    echo '<!DOCTYPE html><html lang="en"><head>';
+    echo '<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">';
+    echo '<title>' . ha_h($title) . ' · FoodMitra Hotel</title>';
+    echo '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">';
+    echo '<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">';
+    echo '<script src="https://cdn.tailwindcss.com"></script>';
+    echo '<script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: "#195510",
+              "primary-hover": "#1F7A32",
+              "primary-soft": "#e8f5e9",
+              "content-bg": "#f9fafb"
+            },
+            fontFamily: { sans: ["Inter", "sans-serif"] }
+          }
+        }
+      };
+    </script>';
     echo '<style>
-:root{--g:#195510;--bg:#f4f6f4;--card:#fff;--bd:#e5e8e5;--muted:#6b6b6b}
-*{box-sizing:border-box}body{margin:0;font-family:Segoe UI,system-ui,sans-serif;background:var(--bg)}
-.wrap{display:flex;min-height:100vh}.side{width:220px;background:#143d0e;color:#fff;padding:18px 12px}
-.brand{font-weight:800;margin-bottom:8px;padding:0 8px}.sub{font-size:12px;opacity:.8;padding:0 8px 18px}
-.side a{display:block;color:#d7ecd7;text-decoration:none;padding:10px 12px;border-radius:10px;margin-bottom:4px;font-weight:600;font-size:14px}
-.side a.active,.side a:hover{background:rgba(255,255,255,.12);color:#fff}
-.main{flex:1;padding:22px}h1{margin:0 0 16px;font-size:22px}
-.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px;margin-bottom:14px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
-.stat{background:linear-gradient(135deg,#e8f5e9,#fff);border:1px solid #c8e6c9;border-radius:14px;padding:16px}
-.stat .n{font-size:28px;font-weight:800;color:var(--g)}.stat .l{color:var(--muted);font-size:13px}
-table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:10px 8px;border-bottom:1px solid var(--bd);text-align:left}
-.btn{display:inline-block;background:var(--g);color:#fff;border:0;border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer;text-decoration:none;font-size:13px}
-.btn.secondary{background:#fff;color:var(--g);border:1px solid var(--g)}
-.input,select,textarea{width:100%;padding:10px;border:1px solid var(--bd);border-radius:10px;margin-bottom:10px}
-label{font-weight:700;font-size:13px;display:block;margin-bottom:4px}
-.otp{font-size:28px;font-weight:800;letter-spacing:6px;color:var(--g)}
-.flash{background:#e8f5e9;border:1px solid #a5d6a7;padding:10px;border-radius:10px;margin-bottom:12px}
-.muted{color:var(--muted);font-size:13px}
-</style></head><body><div class="wrap"><aside class="side">';
-    echo '<div class="brand">FoodMitra Hotel</div><div class="sub">' . ha_h($hotel['name'] ?? '') . '</div>';
-    $links = [
-        'dashboard.php' => 'Dashboard',
-        'online-orders.php' => 'Online Orders',
-        'pos-orders.php' => 'POS Orders',
-        'offers.php' => 'Offers',
-        'discount-settings.php' => 'Discounts',
-        'logout.php' => 'Logout',
-    ];
-    foreach ($links as $href => $label) {
-        $cls = $active === $href ? 'active' : '';
-        echo '<a class="' . $cls . '" href="' . $href . '">' . ha_h($label) . '</a>';
+      .sidebar-item.active { background-color: #195510; color: #fff; }
+      .sidebar-item:hover:not(.active) { background-color: #f3f4f6; color: #111827; }
+      #profileDropdown { opacity: 0; transform: translateY(8px); pointer-events: none; transition: opacity .2s ease, transform .2s ease; }
+      #profileDropdown.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
+      .card { background:#fff; border:1px solid #e5e7eb; border-radius:0.75rem; padding:1.25rem; margin-bottom:1rem; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+      .card h3 { font-size:1rem; font-weight:700; color:#111827; margin:0 0 1rem; }
+      label { display:block; font-size:0.8125rem; font-weight:600; color:#374151; margin:0 0 0.35rem; }
+      .input, select.input, textarea.input, .card select, .card input[type=text], .card input[type=email], .card input[type=password], .card input[type=number], .card textarea, .card select {
+        width:100%; padding:0.65rem 0.85rem; border:1px solid #d1d5db; border-radius:0.5rem; font-size:0.875rem; margin-bottom:0.75rem; background:#fff; color:#111827;
+      }
+      .input:focus, .card select:focus, .card input:focus, .card textarea:focus {
+        outline:none; border-color:#195510; box-shadow:0 0 0 3px rgba(25,85,16,.15);
+      }
+      .btn { display:inline-flex; align-items:center; justify-content:center; gap:0.35rem; background:#195510; color:#fff; border:0; border-radius:0.5rem; padding:0.65rem 1rem; font-weight:600; font-size:0.875rem; cursor:pointer; text-decoration:none; }
+      .btn:hover { background:#1F7A32; }
+      .btn.secondary { background:#fff; color:#195510; border:1px solid #195510; }
+      .btn.secondary:hover { background:#e8f5e9; }
+      .btn.danger { background:#dc2626; }
+      .flash { background:#e8f5e9; border:1px solid #a5d6a7; color:#14532d; padding:0.75rem 1rem; border-radius:0.5rem; margin-bottom:1rem; font-size:0.875rem; font-weight:500; }
+      .muted { color:#6b7280; font-size:0.8125rem; }
+      .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:1rem; margin-bottom:1rem; }
+      .stat { background:#fff; border:1px solid #e5e7eb; border-radius:0.75rem; padding:1.25rem; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+      .stat .n { font-size:1.75rem; font-weight:700; color:#195510; line-height:1.2; }
+      .stat .l { color:#6b7280; font-size:0.8125rem; margin-top:0.25rem; font-weight:500; }
+      table { width:100%; border-collapse:collapse; font-size:0.875rem; }
+      th, td { padding:0.75rem 1rem; border-bottom:1px solid #f3f4f6; text-align:left; vertical-align:middle; }
+      th { font-size:0.7rem; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:.04em; background:#f9fafb; }
+      tbody tr:hover { background:#f9fafb; }
+      .otp { font-size:1.75rem; font-weight:800; letter-spacing:0.35em; color:#195510; font-variant-numeric:tabular-nums; }
+    </style></head>';
+    echo '<body class="bg-content-bg font-sans text-gray-900 min-h-screen flex antialiased">';
+
+    require __DIR__ . '/../partials/sidebar.php';
+
+    echo '<main class="flex-1 lg:ml-64 min-h-screen flex flex-col w-full">';
+    echo '<header class="bg-white border-b border-gray-200 h-14 flex items-center justify-between px-4 sm:px-6 shrink-0 sticky top-0 z-30">';
+    echo '<div class="flex items-center gap-3 flex-1">';
+    echo '<button type="button" class="lg:hidden p-2 rounded-lg hover:bg-gray-100 text-gray-600" onclick="haOpenSidebar()" aria-label="Open menu">';
+    echo '<span class="material-icons-outlined">menu</span></button>';
+    echo '<div class="hidden sm:flex items-center gap-2 text-sm text-gray-500">';
+    echo '<span class="material-icons-outlined text-primary text-[20px]">storefront</span>';
+    echo '<span class="font-medium text-gray-800">' . ha_h($hotelName) . '</span>';
+    echo '</div></div>';
+
+    echo '<div class="flex items-center gap-2 relative">';
+    echo '<div id="profileTrigger" class="flex items-center gap-3 pl-2 ml-1 cursor-pointer group select-none" role="button" tabindex="0">';
+    echo '<div class="relative"><div class="w-9 h-9 rounded-full bg-primary-soft flex items-center justify-center">';
+    echo '<span class="material-icons-outlined text-primary text-[20px]">person</span></div>';
+    echo '<span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white"></span></div>';
+    echo '<div class="text-left hidden md:block"><p class="text-sm font-semibold text-gray-800 leading-tight">' . ha_h($adminName) . '</p>';
+    echo '<p class="text-xs text-gray-500 leading-tight">' . ha_h($adminEmail) . '</p></div>';
+    echo '<span class="material-icons-outlined text-gray-500">expand_more</span></div>';
+    echo '<div id="profileDropdown" class="absolute right-0 top-full mt-1 w-64 bg-white rounded-xl shadow-lg border border-gray-200 py-3 z-50">';
+    echo '<div class="px-4 pb-3 border-b border-gray-100"><p class="text-sm font-semibold text-gray-800">' . ha_h($adminName) . '</p>';
+    echo '<p class="text-xs text-gray-500">' . ha_h($hotelName) . '</p></div>';
+    echo '<a href="logout.php" class="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"><span class="material-icons-outlined text-[18px]">logout</span> Sign out</a>';
+    echo '</div></div></header>';
+
+    echo '<div class="bg-gray-50/80 border-b border-gray-200 px-4 sm:px-8 py-4 shrink-0">';
+    echo '<h2 class="text-lg font-semibold text-gray-900">' . ha_h($title) . '</h2>';
+    if ($subtitle !== '') {
+        echo '<p class="text-sm text-gray-500 mt-0.5">' . ha_h($subtitle) . '</p>';
     }
-    echo '</aside><main class="main"><h1>' . ha_h($title) . '</h1>';
+    echo '</div>';
+
+    echo '<div class="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">';
 }
 
 function ha_layout_end(): void
 {
-    echo '</main></div></body></html>';
+    echo '</div></main>';
+    echo '<script>
+      function haOpenSidebar(){
+        document.getElementById("haSidebar").classList.remove("-translate-x-full");
+        document.getElementById("haSidebarBackdrop").classList.remove("hidden");
+      }
+      function haCloseSidebar(){
+        document.getElementById("haSidebar").classList.add("-translate-x-full");
+        document.getElementById("haSidebarBackdrop").classList.add("hidden");
+      }
+      (function(){
+        var trigger = document.getElementById("profileTrigger");
+        var drop = document.getElementById("profileDropdown");
+        if (!trigger || !drop) return;
+        trigger.addEventListener("click", function(e){ e.stopPropagation(); drop.classList.toggle("open"); });
+        document.addEventListener("click", function(){ drop.classList.remove("open"); });
+      })();
+    </script>';
+    echo '</body></html>';
 }

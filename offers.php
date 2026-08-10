@@ -28,28 +28,44 @@ $stmt = $pdo->prepare('SELECT * FROM hotel_offers WHERE hotel_id = :h ORDER BY s
 $stmt->execute([':h' => $hotelId]);
 $rows = $stmt->fetchAll();
 
-ha_layout_start('Offers', 'offers.php');
+ha_layout_start('Offers', 'offers.php', 'Promo lines shown on your hotel card');
 if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
-<form method="post" class="card">
+
+<form method="post" class="card max-w-xl">
+  <h3>Add offer</h3>
   <label>Title</label>
   <input class="input" name="title" required placeholder="Items at ₹99">
   <label>Subtitle</label>
   <input class="input" name="subtitle" placeholder="On select items">
-  <button class="btn" type="submit">Add offer</button>
+  <button class="btn" type="submit">
+    <span class="material-icons-outlined text-[18px]">local_offer</span> Add offer
+  </button>
 </form>
-<div class="card">
-  <table>
-    <thead><tr><th>Title</th><th>Subtitle</th><th>Active</th><th></th></tr></thead>
-    <tbody>
-      <?php foreach ($rows as $r): ?>
-        <tr>
-          <td><?= ha_h($r['title']) ?></td>
-          <td><?= ha_h($r['subtitle']) ?></td>
-          <td><?= !empty($r['is_active']) ? 'Yes' : 'No' ?></td>
-          <td><a class="btn secondary" href="?del=<?= (int)$r['id'] ?>">Delete</a></td>
-        </tr>
-      <?php endforeach; ?>
-    </tbody>
-  </table>
+
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+  <div class="overflow-x-auto">
+    <table>
+      <thead><tr><th>Title</th><th>Subtitle</th><th>Active</th><th></th></tr></thead>
+      <tbody>
+        <?php foreach ($rows as $r): ?>
+          <tr>
+            <td class="font-semibold text-gray-900"><?= ha_h($r['title']) ?></td>
+            <td class="muted"><?= ha_h($r['subtitle']) ?></td>
+            <td>
+              <?php if (!empty($r['is_active'])): ?>
+                <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Active</span>
+              <?php else: ?>
+                <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Off</span>
+              <?php endif; ?>
+            </td>
+            <td><a class="btn secondary !py-1.5 !px-3 text-xs" href="?del=<?= (int)$r['id'] ?>" onclick="return confirm('Delete this offer?')">Delete</a></td>
+          </tr>
+        <?php endforeach; ?>
+        <?php if (!$rows): ?>
+          <tr><td colspan="4" class="text-center text-gray-500 py-10">No offers yet</td></tr>
+        <?php endif; ?>
+      </tbody>
+    </table>
+  </div>
 </div>
 <?php ha_layout_end(); ?>
