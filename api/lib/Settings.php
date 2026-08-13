@@ -50,6 +50,14 @@ final class Settings
             'partner_earn_percent' => 0,
             'cod_hold_enabled' => 1,
             'offer_ttl_seconds' => 60,
+            'delivery_support_phone' => '',
+            'payment_qr_url' => '',
+            'maintenance_mode_delivery' => 0,
+            'admin_contact_number' => '',
+            'delivery_app_min_version_android' => '1.0.0',
+            'delivery_app_min_version_ios' => '1.0.0',
+            'delivery_app_download_url_android' => '',
+            'delivery_app_download_url_ios' => '',
         ];
     }
 

@@ -8,6 +8,17 @@ sa_require_login();
 
 $pdo = admin_db();
 $flash = '';
+$error = '';
+
+function sa_settings_has(PDO $pdo, string $column): bool
+{
+    $stmt = $pdo->prepare(
+        'SELECT COUNT(*) FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = \'admin_settings\' AND COLUMN_NAME = :c'
+    );
+    $stmt->execute([':c' => $column]);
+    return (int) $stmt->fetchColumn() > 0;
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $commission = (float) ($_POST['delivery_commission_percent'] ?? 3);
@@ -16,6 +27,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $partnerEarn = (float) ($_POST['partner_earn_fixed'] ?? 30);
     $codHold = !empty($_POST['cod_hold_enabled']) ? 1 : 0;
     $offerTtl = (int) ($_POST['offer_ttl_seconds'] ?? 60);
+    $supportPhone = preg_replace('/\D+/', '', (string) ($_POST['delivery_support_phone'] ?? '')) ?? '';
+    $adminContact = preg_replace('/\D+/', '', (string) ($_POST['admin_contact_number'] ?? '')) ?? '';
+    $paymentQr = trim((string) ($_POST['payment_qr_url'] ?? ''));
+    $maintenance = !empty($_POST['maintenance_mode_delivery']) ? 1 : 0;
+    $minAndroid = trim((string) ($_POST['delivery_app_min_version_android'] ?? '1.0.0'));
+    $minIos = trim((string) ($_POST['delivery_app_min_version_ios'] ?? '1.0.0'));
+    $dlAndroid = trim((string) ($_POST['delivery_app_download_url_android'] ?? ''));
+    $dlIos = trim((string) ($_POST['delivery_app_download_url_ios'] ?? ''));
 
     $ranges = [];
     $from = $_POST['from_km'] ?? [];
@@ -31,27 +50,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    $pdo->prepare(
-        'UPDATE admin_settings SET
-          delivery_commission_percent = :c,
-          max_delivery_radius_km = :r,
-          default_partner_radius_km = :pr,
-          partner_earn_fixed = :pe,
-          cod_hold_enabled = :cod,
-          offer_ttl_seconds = :ttl,
-          delivery_charges_config = :cfg
-         WHERE id = 1'
-    )->execute([
-        ':c' => $commission,
-        ':r' => $radius,
-        ':pr' => $partnerRadius,
-        ':pe' => $partnerEarn,
-        ':cod' => $codHold,
-        ':ttl' => $offerTtl,
-        ':cfg' => json_encode($ranges),
-    ]);
-    Settings::refresh();
-    $flash = 'Settings saved';
+    try {
+        $sets = [
+            'delivery_commission_percent = :c',
+            'max_delivery_radius_km = :r',
+            'default_partner_radius_km = :pr',
+            'partner_earn_fixed = :pe',
+            'cod_hold_enabled = :cod',
+            'offer_ttl_seconds = :ttl',
+            'delivery_charges_config = :cfg',
+        ];
+        $params = [
+            ':c' => $commission,
+            ':r' => $radius,
+            ':pr' => $partnerRadius,
+            ':pe' => $partnerEarn,
+            ':cod' => $codHold,
+            ':ttl' => $offerTtl,
+            ':cfg' => json_encode($ranges),
+        ];
+
+        $optional = [
+            'delivery_support_phone' => [':sp', $supportPhone],
+            'admin_contact_number' => [':ac', $adminContact],
+            'payment_qr_url' => [':qr', $paymentQr !== '' ? $paymentQr : null],
+            'maintenance_mode_delivery' => [':mm', $maintenance],
+            'delivery_app_min_version_android' => [':va', $minAndroid !== '' ? $minAndroid : '1.0.0'],
+            'delivery_app_min_version_ios' => [':vi', $minIos !== '' ? $minIos : '1.0.0'],
+            'delivery_app_download_url_android' => [':da', $dlAndroid !== '' ? $dlAndroid : null],
+            'delivery_app_download_url_ios' => [':di', $dlIos !== '' ? $dlIos : null],
+        ];
+        foreach ($optional as $col => [$bind, $val]) {
+            if (sa_settings_has($pdo, $col)) {
+                $sets[] = "$col = $bind";
+                $params[$bind] = $val;
+            }
+        }
+
+        $pdo->prepare('UPDATE admin_settings SET ' . implode(', ', $sets) . ' WHERE id = 1')->execute($params);
+        Settings::refresh();
+        $flash = 'Settings saved';
+    } catch (Throwable $e) {
+        $error = $e->getMessage();
+    }
 }
 
 $s = Settings::get();
@@ -60,8 +101,9 @@ if (!is_array($config) || !$config) {
     $config = [['from_km' => 0, 'to_km' => 10, 'charge' => 29]];
 }
 
-sa_layout_start('Settings', 'settings.php', 'Commission, radius, and delivery charges');
+sa_layout_start('Settings', 'settings.php', 'Commission, radius, delivery app & support');
 if ($flash): ?><div class="flash"><?= sa_h($flash) ?></div><?php endif; ?>
+<?php if ($error): ?><div class="sa-alert-error"><?= sa_h($error) ?></div><?php endif; ?>
 <form method="post" class="card max-w-3xl">
   <h3>Commission & radius</h3>
   <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
@@ -90,6 +132,42 @@ if ($flash): ?><div class="flash"><?= sa_h($flash) ?></div><?php endif; ?>
   <label class="!mb-4 flex items-center gap-2 font-medium text-sm text-gray-700">
     <input type="checkbox" name="cod_hold_enabled" value="1" <?= !empty($s['cod_hold_enabled']) ? 'checked' : '' ?> class="rounded border-gray-300 text-primary">
     Enable COD hold on partners
+  </label>
+
+  <h3>Delivery partner app</h3>
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+    <div>
+      <label>Support phone (shown in partner app)</label>
+      <input class="input" name="delivery_support_phone" maxlength="15" value="<?= sa_h((string)($s['delivery_support_phone'] ?? '')) ?>" placeholder="98XXXXXXXX">
+    </div>
+    <div>
+      <label>Admin contact (maintenance screen)</label>
+      <input class="input" name="admin_contact_number" maxlength="15" value="<?= sa_h((string)($s['admin_contact_number'] ?? '')) ?>" placeholder="98XXXXXXXX">
+    </div>
+    <div class="sm:col-span-2">
+      <label>Payment QR URL (COD pay-online at drop)</label>
+      <input class="input" name="payment_qr_url" value="<?= sa_h((string)($s['payment_qr_url'] ?? '')) ?>" placeholder="https://...">
+    </div>
+    <div>
+      <label>Min Android app version</label>
+      <input class="input" name="delivery_app_min_version_android" value="<?= sa_h((string)($s['delivery_app_min_version_android'] ?? '1.0.0')) ?>">
+    </div>
+    <div>
+      <label>Min iOS app version</label>
+      <input class="input" name="delivery_app_min_version_ios" value="<?= sa_h((string)($s['delivery_app_min_version_ios'] ?? '1.0.0')) ?>">
+    </div>
+    <div>
+      <label>Android download URL</label>
+      <input class="input" name="delivery_app_download_url_android" value="<?= sa_h((string)($s['delivery_app_download_url_android'] ?? '')) ?>">
+    </div>
+    <div>
+      <label>iOS download URL</label>
+      <input class="input" name="delivery_app_download_url_ios" value="<?= sa_h((string)($s['delivery_app_download_url_ios'] ?? '')) ?>">
+    </div>
+  </div>
+  <label class="!mb-6 flex items-center gap-2 font-medium text-sm text-gray-700">
+    <input type="checkbox" name="maintenance_mode_delivery" value="1" <?= !empty($s['maintenance_mode_delivery']) ? 'checked' : '' ?> class="rounded border-gray-300 text-primary">
+    Put delivery partner app in maintenance mode
   </label>
 
   <h3>Delivery charge by km range</h3>

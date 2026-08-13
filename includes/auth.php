@@ -230,9 +230,9 @@ function ha_layout_start(string $title, string $active = '', string $subtitle = 
     echo '</div></div>';
 
     echo '<div class="flex items-center gap-2 sm:gap-4 shrink-0">';
-    echo '<span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold ' . ($isOpen ? 'bg-green-500 text-white' : 'bg-gray-400 text-white') . '">';
-    echo '<span class="w-2 h-2 rounded-full ' . ($isOpen ? 'bg-white animate-pulse' : 'bg-gray-200') . '"></span>';
-    echo '<span class="hidden sm:inline">' . ($isOpen ? 'Online' : 'Offline') . '</span></span>';
+    echo '<button type="button" id="statusToggleBtn" onclick="toggleHotelStatus()" title="Click to go ' . ($isOpen ? 'Offline' : 'Online') . '" class="px-3 md:px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 flex items-center gap-2 shrink-0 ' . ($isOpen ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-400 hover:bg-gray-500 text-white') . '">';
+    echo '<span id="statusDot" class="w-2 h-2 rounded-full ' . ($isOpen ? 'bg-white animate-pulse' : 'bg-gray-200') . '"></span>';
+    echo '<span id="statusText" class="hidden sm:inline">' . ($isOpen ? 'Online' : 'Offline') . '</span></button>';
     echo '<div class="text-right hidden md:block min-w-0">';
     echo '<p class="text-sm font-semibold text-text-main truncate max-w-[160px]">' . ha_h($hotelName) . '</p>';
     echo '<p class="text-xs text-text-muted">Hotel Admin</p></div>';
@@ -281,6 +281,37 @@ function ha_layout_end(): void
         }
         try { localStorage.setItem("fm_ha_sidebar_collapsed", next ? "1" : "0"); } catch (e) {}
       }
+      function toggleHotelStatus(){
+        var btn = document.getElementById("statusToggleBtn");
+        if (btn) { btn.disabled = true; btn.classList.add("opacity-70"); }
+        fetch("toggle-hotel-status.php", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "X-Requested-With": "XMLHttpRequest" }
+        }).then(function(r){ return r.json(); }).then(function(data){
+          if (!data || !data.success) {
+            alert((data && data.message) ? data.message : "Could not update status");
+            return;
+          }
+          var online = !!data.is_online;
+          if (btn) {
+            btn.className = "px-3 md:px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 flex items-center gap-2 shrink-0 " +
+              (online ? "bg-green-500 hover:bg-green-600 text-white" : "bg-gray-400 hover:bg-gray-500 text-white");
+            btn.title = online ? "Click to go Offline" : "Click to go Online";
+          }
+          var text = document.getElementById("statusText");
+          if (text) text.textContent = online ? "Online" : "Offline";
+          var dot = document.getElementById("statusDot");
+          if (dot) {
+            dot.className = "w-2 h-2 rounded-full " + (online ? "bg-white animate-pulse" : "bg-gray-200");
+          }
+          alert(data.message || (online ? "Hotel is now Online" : "Hotel is now Offline"));
+        }).catch(function(){
+          alert("Connection error while updating status");
+        }).finally(function(){
+          if (btn) { btn.disabled = false; btn.classList.remove("opacity-70"); }
+        });
+      }
       (function(){
         try {
           if (localStorage.getItem("fm_ha_sidebar_collapsed") === "1" && window.innerWidth >= 1024) {
@@ -303,5 +334,6 @@ function ha_layout_end(): void
         document.addEventListener("click", function(){ drop.classList.remove("open"); });
       })();
     </script>';
+    echo '<script src="js/order-notification.js" defer></script>';
     echo '</body></html>';
 }

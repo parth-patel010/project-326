@@ -30,7 +30,7 @@ if (isset($_GET['clean']) && ctype_digit((string)$_GET['clean'])) {
     }
 }
 if (isset($_GET['pickup'])) {
-    header('Location: pos-billing.php?type=pickup');
+    header('Location: pos-billing.php?type=pickup&popup=1');
     exit;
 }
 
@@ -103,8 +103,8 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
   </div>
   <div class="flex flex-wrap gap-2">
     <a class="btn secondary sm" href="pos-orders.php"><span class="material-symbols-outlined text-[18px]">refresh</span> Refresh</a>
-    <a class="btn secondary sm" href="pos-billing.php?type=pickup"><span class="material-symbols-outlined text-[18px]">takeout_dining</span> Pickup</a>
-    <a class="btn" href="pos-billing.php"><span class="material-symbols-outlined text-[18px]">add</span> New bill</a>
+    <a class="btn secondary sm" href="pos-billing.php?type=pickup&popup=1" onclick="return openBilling(this.href)"><span class="material-symbols-outlined text-[18px]">takeout_dining</span> Pickup</a>
+    <a class="btn" href="pos-billing.php?popup=1" onclick="return openBilling(this.href)"><span class="material-symbols-outlined text-[18px]">add</span> New bill</a>
   </div>
 </div>
 
@@ -125,10 +125,10 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
       $order = $byTable[$key] ?? null;
       $cls = $order ? $statusColor((string)$order['status']) : 'bg-white border-gray-200 hover:border-primary text-text-main';
       $href = $order
-          ? 'pos-billing.php?id=' . (int)$order['id']
-          : 'pos-billing.php?type=dine_in&table=' . $i;
+          ? 'pos-billing.php?id=' . (int)$order['id'] . '&popup=1'
+          : 'pos-billing.php?type=dine_in&table=' . $i . '&popup=1';
   ?>
-    <a href="<?= $href ?>" class="rounded-xl border-2 p-4 shadow-sm transition hover:shadow-md <?= $cls ?> min-h-[120px] flex flex-col justify-between">
+    <a href="<?= $href ?>" onclick="return openBilling(this.href)" class="rounded-xl border-2 p-4 shadow-sm transition hover:shadow-md <?= $cls ?> min-h-[120px] flex flex-col justify-between">
       <div class="flex justify-between items-start gap-2">
         <span class="text-2xl font-bold leading-none"><?= $i ?></span>
         <?php if ($order): ?>
@@ -144,7 +144,7 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
           <p class="text-sm font-semibold">₹<?= number_format((float)$order['total'], 0) ?></p>
           <p class="text-xs opacity-80"><?= $qty ?> items · <?= ha_h($order['customer_name'] ?: 'Guest') ?></p>
           <?php if (in_array($order['status'], ['paid','printed'], true)): ?>
-            <span class="inline-block mt-2 text-[11px] font-semibold underline" onclick="event.preventDefault(); location.href='?clean=<?= (int)$order['id'] ?>'">Clean table</span>
+            <span class="inline-block mt-2 text-[11px] font-semibold underline" onclick="event.preventDefault();event.stopPropagation();location.href='?clean=<?= (int)$order['id'] ?>'">Clean table</span>
           <?php endif; ?>
         </div>
       <?php else: ?>
@@ -158,7 +158,7 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
   <p class="muted !mb-3">Floor map needs <code>migrate_hotel_pos_ops.php</code>. Showing open bills list instead.</p>
   <div class="space-y-2">
     <?php foreach ($openBills as $b): ?>
-      <a href="pos-billing.php?id=<?= (int)$b['id'] ?>" class="flex justify-between items-center p-3 rounded-lg border border-gray-100 hover:border-primary bg-white">
+      <a href="pos-billing.php?id=<?= (int)$b['id'] ?>&popup=1" onclick="return openBilling(this.href)" class="flex justify-between items-center p-3 rounded-lg border border-gray-100 hover:border-primary bg-white">
         <span class="font-semibold"><?= ha_h($b['public_id']) ?> · <?= ha_h($b['customer_name']) ?></span>
         <span class="text-sm text-text-muted">₹<?= number_format((float)$b['total'], 0) ?> · <?= ha_h($b['status']) ?></span>
       </a>
@@ -172,7 +172,7 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
 <p class="text-xs font-bold text-text-muted uppercase tracking-wider mb-3">Active pickups</p>
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
   <?php foreach ($pickupRows as $p): ?>
-    <a href="pos-billing.php?id=<?= (int)$p['id'] ?>" class="rounded-xl border-2 p-4 shadow-sm hover:shadow-md transition <?= $statusColor((string)$p['status']) ?>">
+    <a href="pos-billing.php?id=<?= (int)$p['id'] ?>&popup=1" onclick="return openBilling(this.href)" class="rounded-xl border-2 p-4 shadow-sm hover:shadow-md transition <?= $statusColor((string)$p['status']) ?>">
       <div class="flex justify-between items-center gap-2">
         <span class="font-bold"><?= ha_h($p['public_id']) ?></span>
         <span class="badge badge-gray"><?= ha_h($p['status']) ?></span>
@@ -185,5 +185,21 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
   <?php endif; ?>
 </div>
 <?php endif; ?>
-<script>setTimeout(function(){ location.reload(); }, 20000);</script>
+<script>
+function openBilling(url) {
+  if (url.indexOf('popup=') === -1) {
+    url += (url.indexOf('?') >= 0 ? '&' : '?') + 'popup=1';
+  }
+  var w = 1280, h = 800;
+  var left = Math.max(0, Math.round((screen.width - w) / 2));
+  var top = Math.max(0, Math.round((screen.height - h) / 2));
+  var features = 'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',scrollbars=yes,resizable=yes';
+  var win = window.open(url, 'FmBilling', features);
+  if (!win || win.closed || typeof win.closed === 'undefined') {
+    location.href = url;
+  }
+  return false;
+}
+setTimeout(function(){ location.reload(); }, 20000);
+</script>
 <?php ha_layout_end(); ?>

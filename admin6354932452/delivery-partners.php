@@ -17,7 +17,7 @@ sa_layout_start('Delivery Partners', 'delivery-partners.php', 'Riders on the Foo
   <div class="overflow-x-auto">
     <table>
       <thead>
-        <tr><th>Name</th><th>Phone</th><th>Radius</th><th>Online</th><th>Verified</th><th>Insurance</th><th>COD wallet</th><th>Completed</th></tr>
+        <tr><th>Name</th><th>Phone</th><th>Radius</th><th>Online</th><th>Status</th><th>Verified</th><th>Insurance</th><th>COD wallet</th><th>Completed</th><th></th></tr>
       </thead>
       <tbody>
         <?php foreach ($rows as $r): ?>
@@ -32,14 +32,16 @@ sa_layout_start('Delivery Partners', 'delivery-partners.php', 'Riders on the Foo
                 <span class="text-xs text-gray-500">Offline</span>
               <?php endif; ?>
             </td>
+            <td><span class="text-xs font-medium"><?= sa_h(ucfirst((string)($r['status'] ?? 'active'))) ?></span></td>
             <td><?= !empty($r['is_verified']) ? 'Yes' : 'No' ?></td>
             <td><?= !empty($r['has_insurance']) ? 'Yes' : 'No' ?></td>
             <td class="font-semibold">₹<?= number_format((float)$r['cod_wallet'], 2) ?></td>
             <td><?= (int)$r['orders_completed'] ?></td>
+            <td><a class="text-sm font-medium text-primary hover:underline" href="delivery-partner-edit.php?id=<?= (int)$r['id'] ?>">Edit</a></td>
           </tr>
         <?php endforeach; ?>
         <?php if (!$rows): ?>
-          <tr><td colspan="8" class="text-center text-gray-500 py-10">No partners yet</td></tr>
+          <tr><td colspan="10" class="text-center text-gray-500 py-10">No partners yet</td></tr>
         <?php endif; ?>
       </tbody>
     </table>
