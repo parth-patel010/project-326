@@ -172,11 +172,21 @@ $mapUrl = ($latVal !== '' && $lngVal !== '')
 
 ha_layout_start('Hotel settings', 'hotel-settings.php', 'Profile, location, GST, tables, and kitchen');
 if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
-<?php if ($error): ?><div style="background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:0.75rem 1rem;border-radius:0.5rem;margin-bottom:1rem;font-size:0.875rem"><?= ha_h($error) ?></div><?php endif; ?>
+<?php if ($error): ?><div class="flash-error"><?= ha_h($error) ?></div><?php endif; ?>
+
+<div class="page-header">
+  <div>
+    <h2>Hotel settings</h2>
+    <p class="sub">Profile, location, GST, tables, and kitchen</p>
+  </div>
+</div>
 
 <form method="post" class="space-y-4 max-w-3xl">
   <div class="card">
-    <h3>Profile</h3>
+    <div class="card-header">
+      <h3>Profile</h3>
+      <button class="btn sm" type="submit"><span class="material-symbols-outlined text-[16px]">save</span> Save</button>
+    </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
       <div class="sm:col-span-2"><label>Hotel name</label><input class="input" name="name" required value="<?= ha_h($hotel['name'] ?? '') ?>"></div>
       <?php if ($cols['description']): ?>
@@ -199,19 +209,22 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
   </div>
 
   <div class="card">
-    <h3>Location</h3>
+    <div class="card-header">
+      <h3>Location</h3>
+      <button class="btn sm" type="submit"><span class="material-symbols-outlined text-[16px]">save</span> Save</button>
+    </div>
     <p class="muted !mt-0 mb-3">Visible and editable. Used for nearby restaurant discovery in the app.</p>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
       <div><label>Latitude</label><input class="input" type="number" step="any" name="latitude" id="inputLat" value="<?= ha_h($latVal) ?>" placeholder="22.3072"></div>
       <div><label>Longitude</label><input class="input" type="number" step="any" name="longitude" id="inputLng" value="<?= ha_h($lngVal) ?>" placeholder="73.1812"></div>
     </div>
     <div class="flex flex-wrap gap-2 mb-2">
-      <button type="button" class="btn secondary !py-2" onclick="useMyLocation()">
-        <span class="material-icons-outlined text-[18px]">my_location</span> Use current location
+      <button type="button" class="btn secondary sm" onclick="useMyLocation()">
+        <span class="material-symbols-outlined text-[18px]">my_location</span> Use current location
       </button>
       <?php if ($mapUrl): ?>
-        <a class="btn secondary !py-2" href="<?= ha_h($mapUrl) ?>" target="_blank" rel="noopener">
-          <span class="material-icons-outlined text-[18px]">map</span> Open in map
+        <a class="btn secondary sm" href="<?= ha_h($mapUrl) ?>" target="_blank" rel="noopener">
+          <span class="material-symbols-outlined text-[18px]">map</span> Open in map
         </a>
       <?php endif; ?>
     </div>
@@ -219,7 +232,10 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
   </div>
 
   <div class="card">
-    <h3>Kitchen & listing</h3>
+    <div class="card-header">
+      <h3>Kitchen & listing</h3>
+      <button class="btn sm" type="submit"><span class="material-symbols-outlined text-[16px]">save</span> Save</button>
+    </div>
     <p class="muted mb-3">
       Prep time is automatic: average of the last 5 completed orders (accept → ready).
       Current estimate: <strong><?= (int) $prepVal ?> min</strong>
@@ -248,7 +264,10 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
 
   <?php if ($cols['gst_enabled'] || $cols['gst_percent'] || $cols['gst_number'] || $cols['service_charge_percent']): ?>
   <div class="card">
-    <h3>Tax & service charge</h3>
+    <div class="card-header">
+      <h3>Tax & service charge</h3>
+      <button class="btn sm" type="submit"><span class="material-symbols-outlined text-[16px]">save</span> Save</button>
+    </div>
     <div class="flex flex-wrap gap-4 mb-3">
       <?php if ($cols['gst_enabled']): ?>
         <label class="!mb-0 flex items-center gap-2 text-sm font-medium">
@@ -274,7 +293,10 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
 
   <?php if ($cols['operating_hours']): ?>
   <div class="card">
-    <h3>Opening hours</h3>
+    <div class="card-header">
+      <h3>Opening hours</h3>
+      <button class="btn sm" type="submit"><span class="material-symbols-outlined text-[16px]">save</span> Save</button>
+    </div>
     <div class="space-y-2">
       <?php foreach ($days as $day):
           $data = $operatingHours[$day] ?? $defaultHours[$day];
@@ -296,8 +318,6 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
     </div>
   </div>
   <?php endif; ?>
-
-  <button class="btn" type="submit"><span class="material-icons-outlined text-[18px]">save</span> Save settings</button>
 </form>
 
 <script>

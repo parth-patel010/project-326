@@ -34,8 +34,17 @@ $rows = $stmt->fetchAll();
 ha_layout_start('Discount Settings', 'discount-settings.php', 'Cart-level discounts for your hotel');
 if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
 
+<div class="page-header">
+  <div>
+    <h2>Discounts</h2>
+    <p class="sub">Cart-level discounts for your hotel</p>
+  </div>
+</div>
+
 <form method="post" class="card max-w-xl">
-  <h3>New discount</h3>
+  <div class="card-header">
+    <h3>New discount</h3>
+  </div>
   <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
     <div class="sm:col-span-2"><label>Title</label><input class="input" name="title" required></div>
     <div>
@@ -49,11 +58,11 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
     <div><label>Min order ₹</label><input class="input" type="number" step="0.01" name="min_order" value="0"></div>
   </div>
   <button class="btn" type="submit">
-    <span class="material-icons-outlined text-[18px]">percent</span> Save discount
+    <span class="material-symbols-outlined text-[18px]">percent</span> Save discount
   </button>
 </form>
 
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<div class="card !p-0 overflow-hidden">
   <div class="overflow-x-auto">
     <table>
       <thead><tr><th>Title</th><th>Type</th><th>Value</th><th>Min</th><th></th></tr></thead>
@@ -61,14 +70,19 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
         <?php foreach ($rows as $r): ?>
           <tr>
             <td class="font-semibold text-gray-900"><?= ha_h($r['title']) ?></td>
-            <td><?= ha_h($r['discount_type']) ?></td>
+            <td><span class="badge badge-gray"><?= ha_h($r['discount_type']) ?></span></td>
             <td class="font-medium"><?= ha_h((string)$r['discount_value']) ?></td>
             <td>₹<?= number_format((float)$r['min_order'], 2) ?></td>
-            <td><a class="btn secondary !py-1.5 !px-3 text-xs" href="?del=<?= (int)$r['id'] ?>" onclick="return confirm('Delete this discount?')">Delete</a></td>
+            <td><a class="btn secondary sm" href="?del=<?= (int)$r['id'] ?>" onclick="return confirm('Delete this discount?')">Delete</a></td>
           </tr>
         <?php endforeach; ?>
         <?php if (!$rows): ?>
-          <tr><td colspan="5" class="text-center text-gray-500 py-10">No discounts yet</td></tr>
+          <tr><td colspan="5">
+            <div class="empty-state">
+              <span class="material-symbols-outlined">percent</span>
+              <p>No discounts yet</p>
+            </div>
+          </td></tr>
         <?php endif; ?>
       </tbody>
     </table>

@@ -286,19 +286,27 @@ $title = $type === 'pickup'
     ? 'Pickup billing'
     : ('Table ' . ($table !== '' ? $table : '—') . ' · Billing');
 
-ha_layout_start($title, 'pos-orders.php', 'Add items, send KOT, print bill');
+ha_layout_start($title, 'pos-billing.php', 'Add items, send KOT, print bill');
 if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
-<?php if ($error): ?><div style="background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:0.75rem 1rem;border-radius:0.5rem;margin-bottom:1rem"><?= ha_h($error) ?></div><?php endif; ?>
+<?php if ($error): ?><div class="flash-error"><?= ha_h($error) ?></div><?php endif; ?>
 
-<div class="flex flex-col lg:flex-row gap-4 items-start">
+<div class="page-header">
+  <div>
+    <h2><?= ha_h($title) ?></h2>
+    <p class="sub">Tap menu items to build the bill</p>
+  </div>
+  <a href="pos-orders.php" class="btn secondary sm"><span class="material-symbols-outlined text-[18px]">grid_view</span> Floor map</a>
+</div>
+
+<div class="flex flex-col lg:flex-row gap-5 items-start">
   <div class="flex-1 w-full min-w-0">
-    <div class="card !mb-3">
+    <div class="card !mb-3 !py-3">
       <input type="search" id="menuSearch" class="input !mb-0" placeholder="Search menu…">
     </div>
     <div class="flex flex-wrap gap-2 mb-3" id="catChips">
       <button type="button" data-cat="0" class="cat-chip px-3 py-1.5 rounded-lg text-sm font-semibold bg-primary text-white">All</button>
       <?php foreach ($categories as $c): ?>
-        <button type="button" data-cat="<?= (int)$c['id'] ?>" class="cat-chip px-3 py-1.5 rounded-lg text-sm font-semibold bg-white border border-gray-200 text-gray-700"><?= ha_h($c['name']) ?></button>
+        <button type="button" data-cat="<?= (int)$c['id'] ?>" class="cat-chip px-3 py-1.5 rounded-lg text-sm font-semibold bg-white border border-gray-200 text-text-muted"><?= ha_h($c['name']) ?></button>
       <?php endforeach; ?>
     </div>
     <div class="grid grid-cols-2 md:grid-cols-3 gap-3" id="menuGrid">
@@ -308,7 +316,7 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
           $gstInc = $menuHasGstInc ? (!empty($m['gst_inclusive']) ? '1' : '0') : '1';
       ?>
         <button type="button"
-          class="menu-card text-left bg-white border border-gray-200 rounded-xl p-3 shadow-sm hover:border-primary hover:shadow transition"
+          class="menu-card text-left bg-white border border-gray-100 rounded-xl p-3.5 shadow-sm hover:border-primary hover:shadow transition"
           data-cat="<?= (int)$m['category_id'] ?>"
           data-name="<?= ha_h(strtolower($m['name'])) ?>"
           data-id="<?= ha_h($m['public_id']) ?>"
@@ -316,21 +324,21 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
           data-price="<?= $basePrice ?>"
           data-gst="<?= $gstInc ?>"
           data-variants="<?= ha_h(json_encode($variants)) ?>">
-          <p class="font-semibold text-sm text-gray-900 leading-snug"><?= ha_h($m['name']) ?></p>
+          <p class="font-semibold text-sm text-text-main leading-snug"><?= ha_h($m['name']) ?></p>
           <p class="text-primary font-bold mt-1">₹<?= number_format($basePrice, 0) ?></p>
-          <?php if ($menuHasJain && !empty($m['is_jain'])): ?><span class="text-[10px] text-amber-700">Jain</span><?php endif; ?>
+          <?php if ($menuHasJain && !empty($m['is_jain'])): ?><span class="badge badge-amber mt-1">Jain</span><?php endif; ?>
         </button>
       <?php endforeach; ?>
       <?php if (!$menuItems): ?>
-        <p class="muted col-span-full">No menu items — add them under Menu items first.</p>
+        <div class="empty-state col-span-full"><span class="material-symbols-outlined">restaurant_menu</span><p>No menu items — add them under Menu items first.</p></div>
       <?php endif; ?>
     </div>
   </div>
 
-  <form method="post" id="billForm" class="w-full lg:w-[380px] shrink-0 card sticky top-4">
-    <div class="flex items-center justify-between mb-3">
-      <h3 class="!mb-0"><?= $type === 'pickup' ? 'Pickup' : 'Table ' . ha_h($table) ?></h3>
-      <a href="pos-orders.php" class="text-sm text-gray-500">Floor</a>
+  <form method="post" id="billForm" class="w-full lg:w-[380px] shrink-0 card sticky top-4 !mb-0">
+    <div class="card-header !mb-4">
+      <h3 class="!mb-0"><?= $type === 'pickup' ? 'Pickup cart' : 'Table ' . ha_h($table) ?></h3>
+      <a href="pos-orders.php" class="text-sm font-medium text-primary hover:underline">Floor</a>
     </div>
     <input type="hidden" name="items_json" id="itemsJson" value="<?= ha_h(json_encode($existingItems)) ?>">
     <label>Customer</label>
@@ -340,16 +348,16 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
     <label>Note / cooking request</label>
     <input class="input" name="note" value="<?= ha_h($order['note'] ?? '') ?>">
 
-    <div id="cartList" class="border border-gray-100 rounded-lg divide-y max-h-56 overflow-y-auto mb-3 bg-gray-50"></div>
+    <div id="cartList" class="border border-gray-100 rounded-lg divide-y max-h-56 overflow-y-auto mb-3 bg-content-bg"></div>
 
     <label>Discount ₹</label>
     <input class="input" type="number" step="0.01" name="discount" id="discountInput" value="<?= ha_h((string)($order['discount'] ?? '0')) ?>">
 
-    <div class="text-sm space-y-1 mb-3">
+    <div class="text-sm space-y-1.5 mb-4 p-3 rounded-lg bg-primary-soft/50 border border-primary/10">
       <div class="flex justify-between"><span class="muted">Subtotal</span><span id="tSub">₹0</span></div>
       <div class="flex justify-between"><span class="muted">Tax</span><span id="tTax">₹0</span></div>
       <div class="flex justify-between"><span class="muted">Service</span><span id="tSvc">₹0</span></div>
-      <div class="flex justify-between font-bold text-base"><span>Total</span><span id="tTot" class="text-primary">₹0</span></div>
+      <div class="flex justify-between font-bold text-base pt-1 border-t border-primary/10"><span>Total</span><span id="tTot" class="text-primary">₹0</span></div>
     </div>
 
     <label>Payment (for settle)</label>
@@ -360,16 +368,18 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
       <?php endforeach; ?>
     </select>
 
-    <div class="grid grid-cols-2 gap-2">
-      <button class="btn secondary" name="action" value="save" type="submit">Save</button>
-      <button class="btn" name="action" value="kot" type="submit">Send KOT</button>
-      <button class="btn" name="action" value="print_bill" type="submit">Print bill</button>
-      <button class="btn" name="action" value="settle" type="submit">Settle</button>
+    <div class="flex flex-col gap-2">
+      <button class="btn w-full" name="action" value="settle" type="submit"><span class="material-symbols-outlined text-[18px]">payments</span> Settle</button>
+      <button class="btn secondary w-full" name="action" value="save" type="submit">Save bill</button>
+      <div class="grid grid-cols-2 gap-2">
+        <button class="btn ghost w-full" name="action" value="kot" type="submit">Send KOT</button>
+        <button class="btn ghost w-full" name="action" value="print_bill" type="submit">Print bill</button>
+      </div>
     </div>
     <?php if ($order): ?>
-      <div class="flex gap-2 mt-2">
-        <a class="btn secondary flex-1 text-center" href="print-kot.php?id=<?= (int)$order['id'] ?>">Reprint KOT</a>
-        <a class="btn secondary flex-1 text-center" href="print-bill.php?id=<?= (int)$order['id'] ?>">Reprint bill</a>
+      <div class="flex gap-2 mt-3 pt-3 border-t border-gray-100">
+        <a class="btn secondary sm flex-1 text-center" href="print-kot.php?id=<?= (int)$order['id'] ?>">Reprint KOT</a>
+        <a class="btn secondary sm flex-1 text-center" href="print-bill.php?id=<?= (int)$order['id'] ?>">Reprint bill</a>
       </div>
     <?php endif; ?>
   </form>

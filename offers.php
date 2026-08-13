@@ -31,18 +31,27 @@ $rows = $stmt->fetchAll();
 ha_layout_start('Offers', 'offers.php', 'Promo lines shown on your hotel card');
 if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
 
+<div class="page-header">
+  <div>
+    <h2>Offers</h2>
+    <p class="sub">Promo lines shown on your hotel card</p>
+  </div>
+</div>
+
 <form method="post" class="card max-w-xl">
-  <h3>Add offer</h3>
+  <div class="card-header">
+    <h3>Add offer</h3>
+  </div>
   <label>Title</label>
   <input class="input" name="title" required placeholder="Items at ₹99">
   <label>Subtitle</label>
   <input class="input" name="subtitle" placeholder="On select items">
   <button class="btn" type="submit">
-    <span class="material-icons-outlined text-[18px]">local_offer</span> Add offer
+    <span class="material-symbols-outlined text-[18px]">local_offer</span> Add offer
   </button>
 </form>
 
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<div class="card !p-0 overflow-hidden">
   <div class="overflow-x-auto">
     <table>
       <thead><tr><th>Title</th><th>Subtitle</th><th>Active</th><th></th></tr></thead>
@@ -53,16 +62,21 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
             <td class="muted"><?= ha_h($r['subtitle']) ?></td>
             <td>
               <?php if (!empty($r['is_active'])): ?>
-                <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Active</span>
+                <span class="badge badge-green">Active</span>
               <?php else: ?>
-                <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Off</span>
+                <span class="badge badge-gray">Off</span>
               <?php endif; ?>
             </td>
-            <td><a class="btn secondary !py-1.5 !px-3 text-xs" href="?del=<?= (int)$r['id'] ?>" onclick="return confirm('Delete this offer?')">Delete</a></td>
+            <td><a class="btn secondary sm" href="?del=<?= (int)$r['id'] ?>" onclick="return confirm('Delete this offer?')">Delete</a></td>
           </tr>
         <?php endforeach; ?>
         <?php if (!$rows): ?>
-          <tr><td colspan="4" class="text-center text-gray-500 py-10">No offers yet</td></tr>
+          <tr><td colspan="4">
+            <div class="empty-state">
+              <span class="material-symbols-outlined">local_offer</span>
+              <p>No offers yet</p>
+            </div>
+          </td></tr>
         <?php endif; ?>
       </tbody>
     </table>

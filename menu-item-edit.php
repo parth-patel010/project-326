@@ -197,76 +197,98 @@ $gstInclusiveVal = isset($item['gst_inclusive']) ? (int) $item['gst_inclusive'] 
 
 ha_layout_start($title, 'menu-items.php', 'Pure veg dishes for FoodMitra');
 if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
-<?php if ($error): ?><div style="background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:0.75rem 1rem;border-radius:0.5rem;margin-bottom:1rem;font-size:0.875rem"><?= ha_h($error) ?></div><?php endif; ?>
+<?php if ($error): ?><div class="flash-error"><?= ha_h($error) ?></div><?php endif; ?>
+
+<div class="page-header">
+  <div>
+    <h2><?= ha_h($title) ?></h2>
+    <p class="sub">Pure veg dishes for FoodMitra</p>
+  </div>
+  <a href="menu-items.php" class="btn secondary sm"><span class="material-symbols-outlined text-[16px]">arrow_back</span> Back</a>
+</div>
 
 <?php if (!$categories): ?>
-  <div class="card">No categories yet. <a class="font-semibold text-primary underline" href="categories.php">Add a category</a> first.</div>
-<?php else: ?>
-<form method="post" class="card max-w-3xl" id="itemForm">
-  <div class="flex items-center justify-between mb-4">
-    <h3 class="!mb-0"><?= ha_h($title) ?></h3>
-    <a href="menu-items.php" class="text-sm font-medium text-gray-500 hover:text-primary">← Back</a>
-  </div>
-
-  <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
-    <div class="sm:col-span-2"><label>Name</label><input class="input" name="name" required maxlength="255" value="<?= ha_h($item['name'] ?? '') ?>"></div>
-    <div class="sm:col-span-2"><label>Description</label><textarea class="input" name="description" rows="3" maxlength="1000"><?= ha_h($item['description'] ?? '') ?></textarea></div>
-    <div>
-      <label>Category</label>
-      <select class="input" name="category_id" required>
-        <?php foreach ($categories as $c): ?>
-          <option value="<?= (int)$c['id'] ?>" <?= (int)($item['category_id'] ?? 0) === (int)$c['id'] ? 'selected' : '' ?>><?= ha_h($c['name']) ?></option>
-        <?php endforeach; ?>
-      </select>
+  <div class="card">
+    <div class="empty-state">
+      <span class="material-symbols-outlined">folder</span>
+      <p>No categories yet. <a class="font-semibold text-primary underline" href="categories.php">Add a category</a> first.</p>
     </div>
-    <div><label>Base price ₹</label><input class="input" type="number" step="0.01" min="1" name="price" required value="<?= ha_h((string)($item['price'] ?? '')) ?>"></div>
-    <div class="sm:col-span-2"><label>Image URL</label><input class="input" name="image" value="<?= ha_h($item['image'] ?? '') ?>" placeholder="https://..."></div>
-    <div><label>Sort order</label><input class="input" type="number" name="sort_order" value="<?= (int)($item['sort_order'] ?? 0) ?>"></div>
+  </div>
+<?php else: ?>
+<form method="post" class="max-w-3xl space-y-4" id="itemForm">
+  <div class="card">
+    <div class="card-header">
+      <h3>Basics</h3>
+      <button class="btn sm" type="submit"><span class="material-symbols-outlined text-[16px]">save</span> <?= $item ? 'Save changes' : 'Create item' ?></button>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+      <div class="sm:col-span-2"><label>Name</label><input class="input" name="name" required maxlength="255" value="<?= ha_h($item['name'] ?? '') ?>"></div>
+      <div class="sm:col-span-2"><label>Description</label><textarea class="input" name="description" rows="3" maxlength="1000"><?= ha_h($item['description'] ?? '') ?></textarea></div>
+      <div>
+        <label>Category</label>
+        <select class="input" name="category_id" required>
+          <?php foreach ($categories as $c): ?>
+            <option value="<?= (int)$c['id'] ?>" <?= (int)($item['category_id'] ?? 0) === (int)$c['id'] ? 'selected' : '' ?>><?= ha_h($c['name']) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div><label>Base price ₹</label><input class="input" type="number" step="0.01" min="1" name="price" required value="<?= ha_h((string)($item['price'] ?? '')) ?>"></div>
+      <div class="sm:col-span-2"><label>Image URL</label><input class="input" name="image" value="<?= ha_h($item['image'] ?? '') ?>" placeholder="https://..."></div>
+      <div><label>Sort order</label><input class="input" type="number" name="sort_order" value="<?= (int)($item['sort_order'] ?? 0) ?>"></div>
+    </div>
+    <p class="text-xs text-primary font-semibold mb-3 flex items-center gap-1">
+      <span class="material-symbols-outlined text-[16px]">eco</span> Always pure veg on FoodMitra
+    </p>
+    <div class="flex flex-wrap gap-4">
+      <label class="!mb-0 flex items-center gap-2 text-sm font-medium"><input type="checkbox" name="is_available" value="1" <?= !isset($item) || !empty($item['is_available']) ? 'checked' : '' ?>> Available</label>
+      <label class="!mb-0 flex items-center gap-2 text-sm font-medium"><input type="checkbox" name="is_recommended" value="1" <?= !empty($item['is_recommended']) ? 'checked' : '' ?>> Recommended</label>
+    </div>
   </div>
 
-  <p class="text-xs text-primary font-semibold mb-3 flex items-center gap-1">
-    <span class="material-icons-outlined text-[16px]">eco</span> Always pure veg on FoodMitra
-  </p>
-
-  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-    <?php if ($cols['is_jain']): ?>
-      <div>
-        <label>Jain option</label>
-        <div class="flex gap-4 mt-1">
-          <label class="!mb-0 flex items-center gap-2 text-sm"><input type="radio" name="is_jain" value="0" <?= empty($item['is_jain']) ? 'checked' : '' ?>> No</label>
-          <label class="!mb-0 flex items-center gap-2 text-sm"><input type="radio" name="is_jain" value="1" <?= !empty($item['is_jain']) ? 'checked' : '' ?>> Yes</label>
+  <?php if ($cols['is_jain'] || $cols['is_spicy'] || $cols['is_sugar_free']): ?>
+  <div class="card">
+    <h3>Dietary flags</h3>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <?php if ($cols['is_jain']): ?>
+        <div>
+          <label>Jain option</label>
+          <div class="flex gap-4 mt-1">
+            <label class="!mb-0 flex items-center gap-2 text-sm"><input type="radio" name="is_jain" value="0" <?= empty($item['is_jain']) ? 'checked' : '' ?>> No</label>
+            <label class="!mb-0 flex items-center gap-2 text-sm"><input type="radio" name="is_jain" value="1" <?= !empty($item['is_jain']) ? 'checked' : '' ?>> Yes</label>
+          </div>
         </div>
-      </div>
-    <?php endif; ?>
-    <?php if ($cols['is_spicy']): ?>
-      <div>
-        <label>Spicy</label>
-        <div class="flex gap-4 mt-1">
-          <label class="!mb-0 flex items-center gap-2 text-sm"><input type="radio" name="is_spicy" value="0" <?= empty($item['is_spicy']) ? 'checked' : '' ?>> No</label>
-          <label class="!mb-0 flex items-center gap-2 text-sm"><input type="radio" name="is_spicy" value="1" <?= !empty($item['is_spicy']) ? 'checked' : '' ?>> Yes</label>
+      <?php endif; ?>
+      <?php if ($cols['is_spicy']): ?>
+        <div>
+          <label>Spicy</label>
+          <div class="flex gap-4 mt-1">
+            <label class="!mb-0 flex items-center gap-2 text-sm"><input type="radio" name="is_spicy" value="0" <?= empty($item['is_spicy']) ? 'checked' : '' ?>> No</label>
+            <label class="!mb-0 flex items-center gap-2 text-sm"><input type="radio" name="is_spicy" value="1" <?= !empty($item['is_spicy']) ? 'checked' : '' ?>> Yes</label>
+          </div>
         </div>
-      </div>
-    <?php endif; ?>
-    <?php if ($cols['is_sugar_free']): ?>
-      <div>
-        <label>Sugar-free</label>
-        <div class="flex gap-4 mt-1">
-          <label class="!mb-0 flex items-center gap-2 text-sm"><input type="radio" name="is_sugar_free" value="0" <?= empty($item['is_sugar_free']) ? 'checked' : '' ?>> No</label>
-          <label class="!mb-0 flex items-center gap-2 text-sm"><input type="radio" name="is_sugar_free" value="1" <?= !empty($item['is_sugar_free']) ? 'checked' : '' ?>> Yes</label>
+      <?php endif; ?>
+      <?php if ($cols['is_sugar_free']): ?>
+        <div>
+          <label>Sugar-free</label>
+          <div class="flex gap-4 mt-1">
+            <label class="!mb-0 flex items-center gap-2 text-sm"><input type="radio" name="is_sugar_free" value="0" <?= empty($item['is_sugar_free']) ? 'checked' : '' ?>> No</label>
+            <label class="!mb-0 flex items-center gap-2 text-sm"><input type="radio" name="is_sugar_free" value="1" <?= !empty($item['is_sugar_free']) ? 'checked' : '' ?>> Yes</label>
+          </div>
         </div>
-      </div>
-    <?php endif; ?>
+      <?php endif; ?>
+    </div>
   </div>
+  <?php endif; ?>
 
   <?php if ($cols['gst_inclusive']): ?>
-  <div class="mb-4">
-    <label>GST treatment for this price</label>
+  <div class="card">
+    <h3>GST treatment</h3>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-      <label class="!mb-0 flex items-start gap-2 p-3 border border-gray-200 rounded-lg cursor-pointer">
+      <label class="!mb-0 flex items-start gap-2 p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-primary/40">
         <input type="radio" name="gst_inclusive" value="0" class="mt-0.5" <?= $gstInclusiveVal === 0 ? 'checked' : '' ?>>
         <span><span class="block text-sm font-semibold">GST excluded</span><span class="muted">Tax added at billing</span></span>
       </label>
-      <label class="!mb-0 flex items-start gap-2 p-3 border border-gray-200 rounded-lg cursor-pointer">
+      <label class="!mb-0 flex items-start gap-2 p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-primary/40">
         <input type="radio" name="gst_inclusive" value="1" class="mt-0.5" <?= $gstInclusiveVal === 1 ? 'checked' : '' ?>>
         <span><span class="block text-sm font-semibold">GST included</span><span class="muted">Price already includes tax</span></span>
       </label>
@@ -275,8 +297,8 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
   <?php endif; ?>
 
   <?php if ($cols['variants_json']): ?>
-  <div class="mb-4">
-    <label>Variants (optional)</label>
+  <div class="card">
+    <h3>Variants <span class="muted font-normal">(optional)</span></h3>
     <p class="muted !mt-0 mb-2">Price = base price + variant charge.</p>
     <div id="variantList" class="space-y-2 mb-2"></div>
     <div class="flex flex-col sm:flex-row gap-2">
@@ -289,8 +311,8 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
   <?php endif; ?>
 
   <?php if ($cols['extras_json']): ?>
-  <div class="mb-4">
-    <label>Extras / add-ons (optional)</label>
+  <div class="card">
+    <h3>Extras / add-ons <span class="muted font-normal">(optional)</span></h3>
     <div id="extraList" class="space-y-2 mb-2"></div>
     <div class="flex flex-col sm:flex-row gap-2">
       <input type="text" id="extraName" class="input !mb-0 flex-1" placeholder="Extra name (e.g. Extra cheese)">
@@ -300,12 +322,6 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
     <input type="hidden" name="extras_json" id="extrasJson" value="<?= ha_h(json_encode($extras)) ?>">
   </div>
   <?php endif; ?>
-
-  <div class="flex flex-wrap gap-4 mb-4">
-    <label class="!mb-0 flex items-center gap-2 text-sm font-medium"><input type="checkbox" name="is_available" value="1" <?= !isset($item) || !empty($item['is_available']) ? 'checked' : '' ?>> Available</label>
-    <label class="!mb-0 flex items-center gap-2 text-sm font-medium"><input type="checkbox" name="is_recommended" value="1" <?= !empty($item['is_recommended']) ? 'checked' : '' ?>> Recommended</label>
-  </div>
-  <button class="btn" type="submit"><span class="material-icons-outlined text-[18px]">save</span> <?= $item ? 'Save changes' : 'Create item' ?></button>
 </form>
 
 <script>

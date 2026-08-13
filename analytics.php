@@ -85,38 +85,51 @@ $top = array_slice($top, 0, 8, true);
 
 ha_layout_start('Analytics', 'analytics.php', 'Revenue and sales for your hotel');
 ?>
+<div class="page-header">
+  <div>
+    <h2>Analytics</h2>
+    <p class="sub">Revenue and sales for your hotel</p>
+  </div>
+</div>
+
 <div class="card !py-3 flex flex-wrap gap-2">
   <?php foreach (['today'=>'Today','yesterday'=>'Yesterday','last7'=>'Last 7 days','last30'=>'Last 30 days','month'=>'This month'] as $k=>$label): ?>
-    <a href="?filter=<?= $k ?>" class="px-3 py-1.5 rounded-lg text-sm font-semibold <?= $filter===$k ? 'bg-primary text-white' : 'bg-white border border-gray-200 text-gray-700' ?>"><?= $label ?></a>
+    <a href="?filter=<?= $k ?>" class="px-3 py-1.5 rounded-lg text-sm font-semibold <?= $filter===$k ? 'bg-primary text-white' : 'bg-white border border-gray-200 text-gray-700 hover:border-primary/40 hover:text-primary' ?>"><?= $label ?></a>
   <?php endforeach; ?>
 </div>
 
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-  <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-5">
-    <p class="text-sm text-gray-600">POS revenue</p>
-    <p class="text-2xl font-bold text-emerald-700 mt-1">₹<?= number_format($posRev, 0) ?></p>
-    <p class="text-xs text-gray-500 mt-1"><?= $posCount ?> orders</p>
+<div class="stat-grid">
+  <div class="stat">
+    <div class="stat-icon"><span class="material-symbols-outlined text-[22px]">point_of_sale</span></div>
+    <p class="n">₹<?= number_format($posRev, 0) ?></p>
+    <p class="l">POS revenue · <?= $posCount ?> orders</p>
   </div>
-  <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-5">
-    <p class="text-sm text-gray-600">App revenue</p>
-    <p class="text-2xl font-bold text-indigo-700 mt-1">₹<?= number_format($appRev, 0) ?></p>
-    <p class="text-xs text-gray-500 mt-1"><?= $appCount ?> orders</p>
+  <div class="stat">
+    <div class="stat-icon"><span class="material-symbols-outlined text-[22px]">smartphone</span></div>
+    <p class="n">₹<?= number_format($appRev, 0) ?></p>
+    <p class="l">App revenue · <?= $appCount ?> orders</p>
   </div>
-  <div class="bg-primary-soft border border-primary/20 rounded-xl p-5">
-    <p class="text-sm text-gray-600">Total revenue</p>
-    <p class="text-2xl font-bold text-primary mt-1">₹<?= number_format($posRev + $appRev, 0) ?></p>
+  <div class="stat">
+    <div class="stat-icon"><span class="material-symbols-outlined text-[22px]">payments</span></div>
+    <p class="n">₹<?= number_format($posRev + $appRev, 0) ?></p>
+    <p class="l">Total revenue</p>
   </div>
-  <div class="bg-amber-50 border border-amber-100 rounded-xl p-5">
-    <p class="text-sm text-gray-600">Top seller</p>
-    <p class="text-lg font-bold text-amber-800 mt-1"><?= $top ? ha_h((string)array_key_first($top)) : '—' ?></p>
-    <p class="text-xs text-gray-500 mt-1"><?= $top ? ((int)reset($top) . ' sold') : 'No POS sales' ?></p>
+  <div class="stat">
+    <div class="stat-icon"><span class="material-symbols-outlined text-[22px]">star</span></div>
+    <p class="n" style="font-size:1.25rem"><?= $top ? ha_h((string)array_key_first($top)) : '—' ?></p>
+    <p class="l"><?= $top ? ((int)reset($top) . ' sold') : 'No POS sales' ?></p>
   </div>
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
   <div class="card">
-    <h3>Most sold (POS)</h3>
-    <?php if (!$top): ?><p class="muted">No item data in this period</p><?php else: ?>
+    <h3><span class="material-symbols-outlined text-[20px] text-primary">trending_up</span> Most sold (POS)</h3>
+    <?php if (!$top): ?>
+      <div class="empty-state">
+        <span class="material-symbols-outlined">inventory_2</span>
+        <p>No item data in this period</p>
+      </div>
+    <?php else: ?>
       <table>
         <thead><tr><th>Item</th><th>Qty</th></tr></thead>
         <tbody>
@@ -128,7 +141,7 @@ ha_layout_start('Analytics', 'analytics.php', 'Revenue and sales for your hotel'
     <?php endif; ?>
   </div>
   <div class="card">
-    <h3>Recent POS orders</h3>
+    <h3><span class="material-symbols-outlined text-[20px] text-primary">receipt_long</span> Recent POS orders</h3>
     <div class="overflow-x-auto">
       <table>
         <thead><tr><th>Bill</th><th>Type</th><th>Total</th><th>Status</th></tr></thead>
@@ -146,10 +159,17 @@ ha_layout_start('Analytics', 'analytics.php', 'Revenue and sales for your hotel'
                 }
               ?></td>
               <td>₹<?= number_format((float)$r['total'], 0) ?></td>
-              <td><?= ha_h($r['status']) ?></td>
+              <td><span class="badge badge-gray"><?= ha_h($r['status']) ?></span></td>
             </tr>
           <?php endforeach; ?>
-          <?php if (!$recentPos): ?><tr><td colspan="4" class="muted text-center py-6">No orders</td></tr><?php endif; ?>
+          <?php if (!$recentPos): ?>
+            <tr><td colspan="4">
+              <div class="empty-state">
+                <span class="material-symbols-outlined">receipt_long</span>
+                <p>No orders</p>
+              </div>
+            </td></tr>
+          <?php endif; ?>
         </tbody>
       </table>
     </div>

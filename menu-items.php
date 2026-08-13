@@ -43,6 +43,14 @@ $rows = $stmt->fetchAll();
 ha_layout_start('Menu items', 'menu-items.php', 'Add and manage dishes for the customer app');
 if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
 
+<div class="page-header">
+  <div>
+    <h2>Menu items</h2>
+    <p class="sub">Add and manage dishes for the customer app</p>
+  </div>
+  <a class="btn" href="menu-item-edit.php"><span class="material-symbols-outlined text-[18px]">add</span> Add item</a>
+</div>
+
 <div class="card flex flex-wrap items-center justify-between gap-3 !py-4">
   <form method="get" class="flex flex-wrap items-center gap-2">
     <select name="category" class="input !mb-0 !w-auto min-w-[180px]" onchange="this.form.submit()">
@@ -52,16 +60,15 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
       <?php endforeach; ?>
     </select>
   </form>
-  <a class="btn" href="menu-item-edit.php"><span class="material-icons-outlined text-[18px]">add</span> Add item</a>
 </div>
 
 <?php if (!$categories): ?>
-  <div class="card text-sm text-amber-900 bg-amber-50 border-amber-100">
+  <div class="flash-error">
     Create at least one <a class="font-semibold underline" href="categories.php">category</a> before adding dishes.
   </div>
 <?php endif; ?>
 
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<div class="card !p-0 overflow-hidden">
   <div class="overflow-x-auto">
     <table>
       <thead>
@@ -80,16 +87,16 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
                   <p class="muted line-clamp-1"><?= ha_h((string)($r['description'] ?? '')) ?></p>
                   <div class="flex flex-wrap gap-1 mt-1">
                     <?php if (!empty($r['is_recommended'])): ?>
-                      <span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">Recommended</span>
+                      <span class="badge badge-amber">Recommended</span>
                     <?php endif; ?>
                     <?php if (!empty($r['is_jain'])): ?>
-                      <span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-800">Jain</span>
+                      <span class="badge badge-green">Jain</span>
                     <?php endif; ?>
                     <?php if (!empty($r['is_spicy'])): ?>
-                      <span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-800">Spicy</span>
+                      <span class="badge badge-red">Spicy</span>
                     <?php endif; ?>
                     <?php if (!empty($r['is_sugar_free'])): ?>
-                      <span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">Sugar-free</span>
+                      <span class="badge badge-blue">Sugar-free</span>
                     <?php endif; ?>
                   </div>
                 </div>
@@ -99,22 +106,27 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
             <td class="font-semibold">₹<?= number_format((float)$r['price'], 2) ?></td>
             <td>
               <?php if (!empty($r['is_available'])): ?>
-                <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Available</span>
+                <span class="badge badge-green">Available</span>
               <?php else: ?>
-                <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Sold out</span>
+                <span class="badge badge-red">Sold out</span>
               <?php endif; ?>
             </td>
             <td>
               <div class="flex flex-wrap gap-2">
-                <a class="btn secondary !py-1.5 !px-3 text-xs" href="menu-item-edit.php?id=<?= (int)$r['id'] ?>">Edit</a>
-                <a class="btn secondary !py-1.5 !px-3 text-xs" href="?toggle=<?= (int)$r['id'] ?><?= $catFilter ? '&category='.$catFilter : '' ?>">Toggle</a>
-                <a class="btn secondary !py-1.5 !px-3 text-xs" href="?del=<?= (int)$r['id'] ?>" onclick="return confirm('Delete this item?')">Delete</a>
+                <a class="btn secondary sm" href="menu-item-edit.php?id=<?= (int)$r['id'] ?>">Edit</a>
+                <a class="btn secondary sm" href="?toggle=<?= (int)$r['id'] ?><?= $catFilter ? '&category='.$catFilter : '' ?>">Toggle</a>
+                <a class="btn secondary sm" href="?del=<?= (int)$r['id'] ?>" onclick="return confirm('Delete this item?')">Delete</a>
               </div>
             </td>
           </tr>
         <?php endforeach; ?>
         <?php if (!$rows): ?>
-          <tr><td colspan="5" class="text-center text-gray-500 py-10">No menu items yet</td></tr>
+          <tr><td colspan="5">
+            <div class="empty-state">
+              <span class="material-symbols-outlined">restaurant_menu</span>
+              <p>No menu items yet</p>
+            </div>
+          </td></tr>
         <?php endif; ?>
       </tbody>
     </table>

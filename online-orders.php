@@ -63,20 +63,27 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
 <?php
 $statusBadge = static function (string $status): string {
     $map = [
-        'placed' => 'bg-blue-100 text-blue-800',
-        'paid' => 'bg-blue-100 text-blue-800',
-        'preparing' => 'bg-amber-100 text-amber-800',
-        'ready' => 'bg-emerald-100 text-emerald-800',
-        'out_for_delivery' => 'bg-indigo-100 text-indigo-800',
-        'delivered' => 'bg-green-100 text-green-800',
-        'cancelled' => 'bg-red-100 text-red-800',
+        'placed' => 'badge-blue',
+        'paid' => 'badge-blue',
+        'preparing' => 'badge-amber',
+        'ready' => 'badge-green',
+        'out_for_delivery' => 'badge-blue',
+        'delivered' => 'badge-green',
+        'cancelled' => 'badge-red',
     ];
-    $cls = $map[$status] ?? 'bg-gray-100 text-gray-800';
-    return '<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium ' . $cls . '">' . htmlspecialchars($status, ENT_QUOTES, 'UTF-8') . '</span>';
+    $cls = $map[$status] ?? 'badge-gray';
+    return '<span class="badge ' . $cls . '">' . htmlspecialchars($status, ENT_QUOTES, 'UTF-8') . '</span>';
 };
 ?>
-<p class="muted mb-3">Auto-refreshes every 15 seconds</p>
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+
+<div class="page-header">
+  <div>
+    <h2>Online orders</h2>
+    <p class="sub">Accept app orders and share pickup OTP with riders · Auto-refreshes every 15 seconds</p>
+  </div>
+</div>
+
+<div class="card !p-0 overflow-hidden">
   <div class="overflow-x-auto">
     <table>
       <thead>
@@ -119,8 +126,8 @@ $statusBadge = static function (string $status): string {
                   <form method="post" class="inline">
                     <input type="hidden" name="order_id" value="<?= (int)$r['id'] ?>">
                     <input type="hidden" name="action" value="accept">
-                    <button class="btn !py-1.5 !px-3 text-xs" type="submit">
-                      <span class="material-icons-outlined text-[16px]">check</span> Accept
+                    <button class="btn sm" type="submit">
+                      <span class="material-symbols-outlined text-[16px]">check</span> Accept
                     </button>
                   </form>
                 <?php endif; ?>
@@ -128,8 +135,8 @@ $statusBadge = static function (string $status): string {
                   <form method="post" class="inline">
                     <input type="hidden" name="order_id" value="<?= (int)$r['id'] ?>">
                     <input type="hidden" name="action" value="ready">
-                    <button class="btn !py-1.5 !px-3 text-xs" type="submit">
-                      <span class="material-icons-outlined text-[16px]">done_all</span> Mark ready
+                    <button class="btn sm" type="submit">
+                      <span class="material-symbols-outlined text-[16px]">done_all</span> Mark ready
                     </button>
                   </form>
                 <?php endif; ?>
@@ -137,7 +144,7 @@ $statusBadge = static function (string $status): string {
                   <form method="post" class="inline" onsubmit="return confirm('Cancel this order?')">
                     <input type="hidden" name="order_id" value="<?= (int)$r['id'] ?>">
                     <input type="hidden" name="action" value="cancel">
-                    <button class="btn secondary !py-1.5 !px-3 text-xs" type="submit">Cancel</button>
+                    <button class="btn secondary sm" type="submit">Cancel</button>
                   </form>
                 <?php endif; ?>
               </div>
@@ -145,7 +152,12 @@ $statusBadge = static function (string $status): string {
           </tr>
         <?php endforeach; ?>
         <?php if (!$rows): ?>
-          <tr><td colspan="6" class="text-center text-gray-500 py-10">No online orders yet</td></tr>
+          <tr><td colspan="6">
+            <div class="empty-state">
+              <span class="material-symbols-outlined">shopping_bag</span>
+              <p>No online orders yet</p>
+            </div>
+          </td></tr>
         <?php endif; ?>
       </tbody>
     </table>

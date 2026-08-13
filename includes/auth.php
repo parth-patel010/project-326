@@ -64,23 +64,24 @@ function ha_user(): ?array
     return $stmt->fetch() ?: null;
 }
 
-function ha_render_sidebar(string $active, string $hotelName): void
+/** @return list<array{label:string,items:list<array{href:string,icon:string,label:string}>}> */
+function ha_nav_groups(): array
 {
-    $nav = [
+    return [
         [
             'label' => 'Orders',
             'items' => [
                 ['href' => 'dashboard.php', 'icon' => 'dashboard', 'label' => 'Dashboard'],
-                ['href' => 'online-orders.php', 'icon' => 'smartphone', 'label' => 'Online Orders'],
-                ['href' => 'pos-orders.php', 'icon' => 'point_of_sale', 'label' => 'POS Orders'],
-                ['href' => 'pos-billing.php', 'icon' => 'receipt_long', 'label' => 'New bill'],
+                ['href' => 'online-orders.php', 'icon' => 'shopping_bag', 'label' => 'Online Orders'],
+                ['href' => 'pos-orders.php', 'icon' => 'receipt_long', 'label' => 'POS Orders'],
+                ['href' => 'pos-billing.php', 'icon' => 'point_of_sale', 'label' => 'New bill'],
             ],
         ],
         [
             'label' => 'Menu',
             'items' => [
-                ['href' => 'categories.php', 'icon' => 'category', 'label' => 'Categories'],
-                ['href' => 'menu-items.php', 'icon' => 'restaurant_menu', 'label' => 'Menu items'],
+                ['href' => 'categories.php', 'icon' => 'folder', 'label' => 'Categories'],
+                ['href' => 'menu-items.php', 'icon' => 'list', 'label' => 'Menu items'],
             ],
         ],
         [
@@ -98,31 +99,19 @@ function ha_render_sidebar(string $active, string $hotelName): void
             ],
         ],
     ];
+}
 
-    echo '<aside id="haSidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 flex flex-col shadow-lg -translate-x-full lg:translate-x-0 transition-transform duration-200">';
-    echo '<div class="p-5 flex items-center gap-3 border-b border-gray-100">';
-    echo '<div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shrink-0"><span class="material-icons-outlined text-white text-[22px]">restaurant</span></div>';
-    echo '<div class="min-w-0"><h1 class="font-bold text-lg text-gray-900 leading-tight truncate">FoodMitra</h1>';
-    echo '<p class="text-xs text-gray-500 truncate">' . ha_h($hotelName) . '</p></div></div>';
-    echo '<nav class="flex-1 px-3 py-4 space-y-4 overflow-y-auto">';
-    foreach ($nav as $group) {
-        echo '<div><p class="px-3 mb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">' . ha_h($group['label']) . '</p><div class="space-y-0.5">';
-        foreach ($group['items'] as $item) {
-            $cls = ($active === $item['href']) ? 'sidebar-item active text-white' : 'sidebar-item text-gray-600';
-            echo '<a href="' . ha_h($item['href']) . '" class="' . $cls . ' flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">';
-            echo '<span class="material-icons-outlined text-[20px]">' . ha_h($item['icon']) . '</span><span>' . ha_h($item['label']) . '</span></a>';
-        }
-        echo '</div></div>';
-    }
-    echo '<a href="logout.php" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 mt-2">';
-    echo '<span class="material-icons-outlined text-[20px]">logout</span><span>Logout</span></a>';
-    echo '</nav></aside>';
-    echo '<div id="haSidebarBackdrop" class="fixed inset-0 bg-black/40 z-40 hidden lg:hidden" onclick="window.haCloseSidebar && haCloseSidebar()"></div>';
+function ha_render_sidebar(string $active, string $hotelName): void
+{
+    $active = $active !== '' ? $active : '';
+    $hotelName = $hotelName;
+    $nav = ha_nav_groups();
+    require dirname(__DIR__) . '/partials/sidebar.php';
 }
 
 /**
  * @param string $title Page title
- * @param string $active Active nav href
+ * @param string $active Active nav href (e.g. pos-billing.php)
  * @param string $subtitle Optional subtitle
  */
 function ha_layout_start(string $title, string $active = '', string $subtitle = ''): void
@@ -132,13 +121,13 @@ function ha_layout_start(string $title, string $active = '', string $subtitle = 
     $hotelName = (string) ($hotel['name'] ?? 'Hotel');
     $adminName = (string) ($user['name'] ?? $hotelName);
     $adminEmail = (string) ($user['email'] ?? '');
-    $active = $active;
+    $isOpen = !isset($hotel['is_open']) || (int) ($hotel['is_open'] ?? 1) === 1;
 
     echo '<!DOCTYPE html><html lang="en"><head>';
     echo '<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">';
     echo '<title>' . ha_h($title) . ' · FoodMitra Hotel</title>';
-    echo '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">';
-    echo '<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">';
+    echo '<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">';
+    echo '<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">';
     echo '<script src="https://cdn.tailwindcss.com"></script>';
     echo '<script>
       tailwind.config = {
@@ -148,80 +137,119 @@ function ha_layout_start(string $title, string $active = '', string $subtitle = 
               primary: "#195510",
               "primary-hover": "#1F7A32",
               "primary-soft": "#e8f5e9",
-              "content-bg": "#f9fafb"
+              "sidebar-bg": "#ffffff",
+              "content-bg": "#f9fafb",
+              "text-main": "#1f2937",
+              "text-muted": "#6b7280"
             },
-            fontFamily: { sans: ["Inter", "sans-serif"] }
+            fontFamily: { sans: ["DM Sans", "system-ui", "sans-serif"] }
           }
         }
       };
     </script>';
     echo '<style>
+      .material-symbols-outlined { font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24; }
       .sidebar-item.active { background-color: #195510; color: #fff; }
       .sidebar-item:hover:not(.active) { background-color: #f3f4f6; color: #111827; }
+      #haSidebar.sidebar-collapsed { width: 4.5rem; }
+      #haSidebar.sidebar-collapsed .sb-nav-label,
+      #haSidebar.sidebar-collapsed .sb-brand-text,
+      #haSidebar.sidebar-collapsed .sb-group-label { display: none; }
+      #haSidebar.sidebar-collapsed .sb-brand-wrap { justify-content: center; }
+      #haSidebar.sidebar-collapsed .sb-nav-link { justify-content: center; padding-left: 0.75rem; padding-right: 0.75rem; }
+      @media (min-width: 1024px) {
+        body.ha-sidebar-collapsed .ha-main { margin-left: 4.5rem !important; }
+      }
       #profileDropdown { opacity: 0; transform: translateY(8px); pointer-events: none; transition: opacity .2s ease, transform .2s ease; }
       #profileDropdown.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
-      .card { background:#fff; border:1px solid #e5e7eb; border-radius:0.75rem; padding:1.25rem; margin-bottom:1rem; box-shadow:0 1px 2px rgba(0,0,0,.04); }
-      .card h3 { font-size:1rem; font-weight:700; color:#111827; margin:0 0 1rem; }
+      .card { background:#fff; border:1px solid #f3f4f6; border-radius:0.75rem; padding:1.5rem; margin-bottom:1.5rem; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+      .card h3 { font-size:1rem; font-weight:700; color:#1f2937; margin:0 0 1rem; display:flex; align-items:center; gap:0.5rem; }
+      .card-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1rem; flex-wrap:wrap; }
+      .card-header h3 { margin:0; }
       label { display:block; font-size:0.8125rem; font-weight:600; color:#374151; margin:0 0 0.35rem; }
-      .input, select.input, textarea.input, .card select, .card input[type=text], .card input[type=email], .card input[type=password], .card input[type=number], .card textarea, .card select {
-        width:100%; padding:0.65rem 0.85rem; border:1px solid #d1d5db; border-radius:0.5rem; font-size:0.875rem; margin-bottom:0.75rem; background:#fff; color:#111827;
+      .input, select.input, textarea.input, .card select, .card input[type=text], .card input[type=email], .card input[type=password], .card input[type=number], .card input[type=tel], .card input[type=url], .card input[type=time], .card textarea, .card select {
+        width:100%; padding:0.65rem 0.85rem; border:1px solid #d1d5db; border-radius:0.5rem; font-size:0.875rem; margin-bottom:0.75rem; background:#fff; color:#1f2937;
       }
       .input:focus, .card select:focus, .card input:focus, .card textarea:focus {
         outline:none; border-color:#195510; box-shadow:0 0 0 3px rgba(25,85,16,.15);
       }
-      .btn { display:inline-flex; align-items:center; justify-content:center; gap:0.35rem; background:#195510; color:#fff; border:0; border-radius:0.5rem; padding:0.65rem 1rem; font-weight:600; font-size:0.875rem; cursor:pointer; text-decoration:none; }
+      .btn { display:inline-flex; align-items:center; justify-content:center; gap:0.35rem; background:#195510; color:#fff; border:0; border-radius:0.5rem; padding:0.65rem 1rem; font-weight:600; font-size:0.875rem; cursor:pointer; text-decoration:none; box-shadow:0 1px 2px rgba(0,0,0,.06); transition:background .15s ease; }
       .btn:hover { background:#1F7A32; }
-      .btn.secondary { background:#fff; color:#195510; border:1px solid #195510; }
-      .btn.secondary:hover { background:#e8f5e9; }
+      .btn.secondary { background:#fff; color:#195510; border:1px solid #d1d5db; box-shadow:none; }
+      .btn.secondary:hover { background:#e8f5e9; border-color:#195510; }
+      .btn.ghost { background:transparent; color:#195510; border:1px dashed #195510; box-shadow:none; }
+      .btn.ghost:hover { background:#e8f5e9; }
       .btn.danger { background:#dc2626; }
+      .btn.danger:hover { background:#b91c1c; }
+      .btn.sm { padding:0.4rem 0.75rem; font-size:0.8125rem; }
       .flash { background:#e8f5e9; border:1px solid #a5d6a7; color:#14532d; padding:0.75rem 1rem; border-radius:0.5rem; margin-bottom:1rem; font-size:0.875rem; font-weight:500; }
+      .flash-error { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; padding:0.75rem 1rem; border-radius:0.5rem; margin-bottom:1rem; font-size:0.875rem; font-weight:500; }
       .muted { color:#6b7280; font-size:0.8125rem; }
-      .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:1rem; margin-bottom:1rem; }
-      .stat { background:#fff; border:1px solid #e5e7eb; border-radius:0.75rem; padding:1.25rem; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+      .stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:1.25rem; margin-bottom:1.5rem; }
+      .stat { background:#fff; border:1px solid #f3f4f6; border-radius:0.75rem; padding:1.25rem 1.5rem; box-shadow:0 1px 2px rgba(0,0,0,.04); position:relative; overflow:hidden; }
       .stat .n { font-size:1.75rem; font-weight:700; color:#195510; line-height:1.2; }
       .stat .l { color:#6b7280; font-size:0.8125rem; margin-top:0.25rem; font-weight:500; }
+      .stat .stat-icon { position:absolute; right:1rem; top:1rem; width:2.5rem; height:2.5rem; border-radius:0.75rem; background:#e8f5e9; color:#195510; display:flex; align-items:center; justify-content:center; }
+      .page-header { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap; }
+      .page-header h2 { font-size:1.5rem; font-weight:700; color:#1f2937; margin:0; line-height:1.25; }
+      .page-header .sub { color:#6b7280; font-size:0.875rem; margin-top:0.25rem; }
+      .badge { display:inline-flex; align-items:center; gap:0.25rem; padding:0.2rem 0.55rem; border-radius:9999px; font-size:0.7rem; font-weight:600; letter-spacing:.02em; }
+      .badge-green { background:#e8f5e9; color:#14532d; }
+      .badge-amber { background:#fffbeb; color:#92400e; }
+      .badge-red { background:#fef2f2; color:#991b1b; }
+      .badge-blue { background:#eff6ff; color:#1e40af; }
+      .badge-gray { background:#f3f4f6; color:#4b5563; }
+      .empty-state { text-align:center; padding:2.5rem 1.5rem; color:#6b7280; }
+      .empty-state .material-symbols-outlined { font-size:2.5rem; color:#d1d5db; margin-bottom:0.5rem; }
       table { width:100%; border-collapse:collapse; font-size:0.875rem; }
-      th, td { padding:0.75rem 1rem; border-bottom:1px solid #f3f4f6; text-align:left; vertical-align:middle; }
+      th, td { padding:0.85rem 1rem; border-bottom:1px solid #f3f4f6; text-align:left; vertical-align:middle; }
       th { font-size:0.7rem; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:.04em; background:#f9fafb; }
       tbody tr:hover { background:#f9fafb; }
       .otp { font-size:1.75rem; font-weight:800; letter-spacing:0.35em; color:#195510; font-variant-numeric:tabular-nums; }
+      .thin-scrollbar { scrollbar-width: thin; scrollbar-color: #b8bcc4 #f3f4f6; }
+      .thin-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+      .thin-scrollbar::-webkit-scrollbar-thumb { background: #b8bcc4; border-radius: 0; }
     </style></head>';
-    echo '<body class="bg-content-bg font-sans text-gray-900 min-h-screen flex antialiased">';
+    echo '<body class="bg-content-bg font-sans text-text-main h-screen overflow-hidden flex antialiased">';
 
     ha_render_sidebar($active, $hotelName);
 
-    echo '<main class="flex-1 lg:ml-64 min-h-screen flex flex-col w-full">';
-    echo '<header class="bg-white border-b border-gray-200 h-14 flex items-center justify-between px-4 sm:px-6 shrink-0 sticky top-0 z-30">';
-    echo '<div class="flex items-center gap-3 flex-1">';
-    echo '<button type="button" class="lg:hidden p-2 rounded-lg hover:bg-gray-100 text-gray-600" onclick="haOpenSidebar()" aria-label="Open menu">';
-    echo '<span class="material-icons-outlined">menu</span></button>';
-    echo '<div class="hidden sm:flex items-center gap-2 text-sm text-gray-500">';
-    echo '<span class="material-icons-outlined text-primary text-[20px]">storefront</span>';
-    echo '<span class="font-medium text-gray-800">' . ha_h($hotelName) . '</span>';
+    echo '<main class="ha-main flex-1 lg:ml-64 min-h-0 flex flex-col w-full transition-[margin] duration-200">';
+    echo '<header class="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-4 sm:px-6 shrink-0 z-30">';
+    echo '<div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">';
+    echo '<button type="button" class="lg:hidden p-2 rounded-lg hover:bg-gray-100 text-text-muted" onclick="haOpenSidebar()" aria-label="Open menu">';
+    echo '<span class="material-symbols-outlined">menu</span></button>';
+    echo '<button type="button" id="sidebarCollapseBtn" class="hidden lg:inline-flex p-2 rounded-lg hover:bg-gray-100 text-text-muted" onclick="haToggleCollapse()" aria-label="Collapse sidebar" title="Collapse menu">';
+    echo '<span class="material-symbols-outlined">menu</span></button>';
+    echo '<div class="min-w-0"><p class="text-sm font-semibold text-text-main truncate">' . ha_h($title) . '</p>';
+    if ($subtitle !== '') {
+        echo '<p class="text-xs text-text-muted truncate">' . ha_h($subtitle) . '</p>';
+    } else {
+        echo '<p class="text-xs text-text-muted truncate hidden sm:block">Hotel Admin</p>';
+    }
     echo '</div></div>';
 
-    echo '<div class="flex items-center gap-2 relative">';
-    echo '<div id="profileTrigger" class="flex items-center gap-3 pl-2 ml-1 cursor-pointer group select-none" role="button" tabindex="0">';
-    echo '<div class="relative"><div class="w-9 h-9 rounded-full bg-primary-soft flex items-center justify-center">';
-    echo '<span class="material-icons-outlined text-primary text-[20px]">person</span></div>';
-    echo '<span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white"></span></div>';
-    echo '<div class="text-left hidden md:block"><p class="text-sm font-semibold text-gray-800 leading-tight">' . ha_h($adminName) . '</p>';
-    echo '<p class="text-xs text-gray-500 leading-tight">' . ha_h($adminEmail) . '</p></div>';
-    echo '<span class="material-icons-outlined text-gray-500">expand_more</span></div>';
+    echo '<div class="flex items-center gap-2 sm:gap-4 shrink-0">';
+    echo '<span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold ' . ($isOpen ? 'bg-green-500 text-white' : 'bg-gray-400 text-white') . '">';
+    echo '<span class="w-2 h-2 rounded-full ' . ($isOpen ? 'bg-white animate-pulse' : 'bg-gray-200') . '"></span>';
+    echo '<span class="hidden sm:inline">' . ($isOpen ? 'Online' : 'Offline') . '</span></span>';
+    echo '<div class="text-right hidden md:block min-w-0">';
+    echo '<p class="text-sm font-semibold text-text-main truncate max-w-[160px]">' . ha_h($hotelName) . '</p>';
+    echo '<p class="text-xs text-text-muted">Hotel Admin</p></div>';
+
+    echo '<div class="relative">';
+    echo '<div id="profileTrigger" class="flex items-center gap-2 cursor-pointer select-none p-1 rounded-lg hover:bg-gray-50" role="button" tabindex="0">';
+    echo '<div class="w-9 h-9 rounded-full bg-primary-soft flex items-center justify-center">';
+    echo '<span class="material-symbols-outlined text-primary text-[20px]">person</span></div>';
+    echo '<span class="material-symbols-outlined text-text-muted text-[20px] hidden sm:inline">expand_more</span></div>';
     echo '<div id="profileDropdown" class="absolute right-0 top-full mt-1 w-64 bg-white rounded-xl shadow-lg border border-gray-200 py-3 z-50">';
-    echo '<div class="px-4 pb-3 border-b border-gray-100"><p class="text-sm font-semibold text-gray-800">' . ha_h($adminName) . '</p>';
-    echo '<p class="text-xs text-gray-500">' . ha_h($hotelName) . '</p></div>';
-    echo '<a href="logout.php" class="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"><span class="material-icons-outlined text-[18px]">logout</span> Sign out</a>';
-    echo '</div></div></header>';
+    echo '<div class="px-4 pb-3 border-b border-gray-100"><p class="text-sm font-semibold text-text-main">' . ha_h($adminName) . '</p>';
+    echo '<p class="text-xs text-text-muted truncate">' . ha_h($adminEmail !== '' ? $adminEmail : $hotelName) . '</p></div>';
+    echo '<a href="hotel-settings.php" class="flex items-center gap-2 px-4 py-2.5 text-sm text-text-main hover:bg-gray-50"><span class="material-symbols-outlined text-[18px]">settings</span> Settings</a>';
+    echo '<a href="logout.php" class="flex items-center gap-2 px-4 py-2.5 text-sm text-text-main hover:bg-gray-50"><span class="material-symbols-outlined text-[18px]">logout</span> Sign out</a>';
+    echo '</div></div></div></header>';
 
-    echo '<div class="bg-gray-50/80 border-b border-gray-200 px-4 sm:px-8 py-4 shrink-0">';
-    echo '<h2 class="text-lg font-semibold text-gray-900">' . ha_h($title) . '</h2>';
-    if ($subtitle !== '') {
-        echo '<p class="text-sm text-gray-500 mt-0.5">' . ha_h($subtitle) . '</p>';
-    }
-    echo '</div>';
-
-    echo '<div class="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">';
+    echo '<div class="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto thin-scrollbar min-h-0">';
 }
 
 function ha_layout_end(): void
@@ -229,14 +257,45 @@ function ha_layout_end(): void
     echo '</div></main>';
     echo '<script>
       function haOpenSidebar(){
-        document.getElementById("haSidebar").classList.remove("-translate-x-full");
-        document.getElementById("haSidebarBackdrop").classList.remove("hidden");
+        var s = document.getElementById("haSidebar");
+        var b = document.getElementById("haSidebarBackdrop");
+        if (s) s.classList.remove("-translate-x-full");
+        if (b) b.classList.remove("hidden");
       }
       function haCloseSidebar(){
-        document.getElementById("haSidebar").classList.add("-translate-x-full");
-        document.getElementById("haSidebarBackdrop").classList.add("hidden");
+        var s = document.getElementById("haSidebar");
+        var b = document.getElementById("haSidebarBackdrop");
+        if (s) s.classList.add("-translate-x-full");
+        if (b) b.classList.add("hidden");
+      }
+      function haToggleCollapse(){
+        var s = document.getElementById("haSidebar");
+        if (!s || window.innerWidth < 1024) return;
+        var next = !s.classList.contains("sidebar-collapsed");
+        s.classList.toggle("sidebar-collapsed", next);
+        document.body.classList.toggle("ha-sidebar-collapsed", next);
+        var btn = document.getElementById("sidebarCollapseBtn");
+        if (btn) {
+          var icon = btn.querySelector(".material-symbols-outlined");
+          if (icon) icon.textContent = next ? "menu_open" : "menu";
+        }
+        try { localStorage.setItem("fm_ha_sidebar_collapsed", next ? "1" : "0"); } catch (e) {}
       }
       (function(){
+        try {
+          if (localStorage.getItem("fm_ha_sidebar_collapsed") === "1" && window.innerWidth >= 1024) {
+            var s = document.getElementById("haSidebar");
+            if (s) {
+              s.classList.add("sidebar-collapsed");
+              document.body.classList.add("ha-sidebar-collapsed");
+              var btn = document.getElementById("sidebarCollapseBtn");
+              if (btn) {
+                var icon = btn.querySelector(".material-symbols-outlined");
+                if (icon) icon.textContent = "menu_open";
+              }
+            }
+          }
+        } catch (e) {}
         var trigger = document.getElementById("profileTrigger");
         var drop = document.getElementById("profileDropdown");
         if (!trigger || !drop) return;

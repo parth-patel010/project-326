@@ -38,33 +38,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hotel Admin Login · FoodMitra</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
-          colors: { primary: "#195510", "primary-hover": "#1F7A32" },
-          fontFamily: { sans: ["Inter", "sans-serif"] }
+          colors: {
+            primary: "#195510",
+            "primary-hover": "#1F7A32",
+            "primary-soft": "#e8f5e9",
+            "content-bg": "#f9fafb",
+            "text-main": "#1f2937",
+            "text-muted": "#6b7280"
+          },
+          fontFamily: { sans: ["DM Sans", "system-ui", "sans-serif"] }
         }
       }
     };
   </script>
 </head>
-<body class="bg-gray-100 font-sans antialiased min-h-screen flex items-center justify-center p-4">
+<body class="bg-content-bg font-sans antialiased min-h-screen flex items-center justify-center p-4">
   <div class="w-full max-w-md">
-    <div class="bg-white rounded-2xl shadow-lg p-8 md:p-10">
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 md:p-10">
       <div class="flex justify-center mb-6">
-        <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center">
-          <span class="material-icons-outlined text-white text-3xl">storefront</span>
+        <div class="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-sm">
+          <span class="material-symbols-outlined text-white text-3xl">storefront</span>
         </div>
       </div>
-      <h1 class="text-2xl font-bold text-gray-900 text-center mb-2">Hotel Admin Login</h1>
-      <p class="text-gray-500 text-center mb-8">Sign in to manage your restaurant orders</p>
+      <h1 class="text-2xl font-bold text-text-main text-center mb-2">Hotel Admin</h1>
+      <p class="text-text-muted text-center mb-8 text-sm">Sign in to manage orders, menu, and POS</p>
 
       <?php if ($error): ?>
-        <div class="mb-5 text-sm text-red-600 bg-red-50 border border-red-100 p-3 rounded-lg"><?= ha_h($error) ?></div>
+        <div class="flash-error mb-5"><?= ha_h($error) ?></div>
       <?php endif; ?>
 
       <form method="post" class="space-y-5">
@@ -72,10 +79,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <label class="block text-sm font-semibold text-gray-700 mb-2" for="email">Email</label>
           <div class="relative">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <span class="material-icons-outlined text-gray-400 text-xl">email</span>
+              <span class="material-symbols-outlined text-gray-400 text-xl">mail</span>
             </div>
             <input type="email" id="email" name="email" required
-                   class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                   class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-text-main"
                    placeholder="Hotel login email" value="<?= ha_h((string)($_POST['email'] ?? '')) ?>">
           </div>
         </div>
@@ -83,23 +90,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <label class="block text-sm font-semibold text-gray-700 mb-2" for="password">Password</label>
           <div class="relative">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <span class="material-icons-outlined text-gray-400 text-xl">vpn_key</span>
+              <span class="material-symbols-outlined text-gray-400 text-xl">lock</span>
             </div>
             <input type="password" id="password" name="password" required
-                   class="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                   class="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-text-main"
                    placeholder="Password">
             <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 pr-3 flex items-center">
-              <span id="toggleIcon" class="material-icons-outlined text-gray-400 text-xl hover:text-gray-600">visibility</span>
+              <span id="toggleIcon" class="material-symbols-outlined text-gray-400 text-xl hover:text-gray-600">visibility</span>
             </button>
           </div>
         </div>
         <button type="submit" class="w-full py-3 bg-primary hover:bg-primary-hover text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm">
           <span>Sign In</span>
-          <span class="material-icons-outlined text-xl">arrow_forward</span>
+          <span class="material-symbols-outlined text-xl">arrow_forward</span>
         </button>
       </form>
     </div>
+    <p class="text-center text-xs text-text-muted mt-6">FoodMitra · Hotel operations</p>
   </div>
+  <style>
+    .flash-error { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; padding:0.75rem 1rem; border-radius:0.5rem; font-size:0.875rem; font-weight:500; }
+  </style>
   <script>
     document.getElementById('togglePassword').addEventListener('click', function () {
       var p = document.getElementById('password');
