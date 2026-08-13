@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/bill_tax.php';
+require_once __DIR__ . '/includes/dining.php';
 ha_require_login();
 
 $hotelId = (int) $_SESSION['ha_hotel_id'];
@@ -30,7 +31,21 @@ $servicePercent = (float) ($hotel['service_charge_percent'] ?? 0);
 
 $orderId = isset($_GET['id']) && ctype_digit((string)$_GET['id']) ? (int) $_GET['id'] : 0;
 $type = ($_GET['type'] ?? 'dine_in') === 'pickup' ? 'pickup' : 'dine_in';
-$table = trim((string) ($_GET['table'] ?? ''));
+$areaParam = strtolower(trim((string) ($_GET['area'] ?? '')));
+$tableRaw = trim((string) ($_GET['table'] ?? ''));
+$numberParam = isset($_GET['number']) && ctype_digit((string) $_GET['number']) ? (int) $_GET['number'] : 0;
+$table = '';
+if ($areaParam !== '' && ($numberParam > 0 || ctype_digit($tableRaw))) {
+    $num = $numberParam > 0 ? $numberParam : (int) $tableRaw;
+    $table = ha_dining_loc_key($areaParam, $num);
+} elseif ($tableRaw !== '') {
+    $parsedGet = ha_dining_parse_loc($tableRaw);
+    $table = $parsedGet['number'] > 0
+        ? ha_dining_loc_key($parsedGet['area'], $parsedGet['number'])
+        : $tableRaw;
+} elseif ($numberParam > 0) {
+    $table = ha_dining_loc_key($areaParam !== '' ? $areaParam : 'table', $numberParam);
+}
 $isPopup = (isset($_GET['popup']) && (string) $_GET['popup'] === '1')
     || (isset($_POST['popup']) && (string) $_POST['popup'] === '1');
 $autoPrint = isset($_GET['print']) ? strtolower(trim((string) $_GET['print'])) : '';
@@ -58,7 +73,11 @@ if ($orderId > 0) {
         $type = ($order['order_type'] ?? 'dine_in') === 'pickup' ? 'pickup' : 'dine_in';
     }
     if ($posCols['table_no']) {
-        $table = (string) ($order['table_no'] ?? '');
+        $raw = trim((string) ($order['table_no'] ?? ''));
+        $parsedOrd = ha_dining_parse_loc($raw);
+        $table = $parsedOrd['number'] > 0
+            ? ha_dining_loc_key($parsedOrd['area'], $parsedOrd['number'])
+            : $raw;
     }
 }
 
@@ -305,12 +324,21 @@ if ($order) {
     $existingItems = json_decode((string) $order['items_json'], true) ?: [];
 }
 
+$locParsed = ha_dining_parse_loc($table);
+$seatLabel = $locParsed['number'] > 0
+    ? ha_dining_display_label($locParsed['area'], $locParsed['number'], $hotel)
+    : '';
+if ($locParsed['area'] === 'table' && $locParsed['number'] > 0) {
+    $seatLabel = 'Table ' . $locParsed['number'];
+} elseif ($seatLabel === '' && $table !== '') {
+    $seatLabel = $table;
+}
 $title = $type === 'pickup'
     ? 'Pickup billing'
-    : ('Table ' . ($table !== '' ? $table : '—') . ' · Billing');
+    : (($seatLabel !== '' ? $seatLabel : 'Dine in') . ' · Billing');
 $selectedLabel = $type === 'pickup'
     ? 'Pickup'
-    : ('Table ' . ($table !== '' ? $table : '—'));
+    : ($seatLabel !== '' ? $seatLabel : '—');
 $orderIdForPrint = $order ? (int) $order['id'] : 0;
 
 $posHead = static function () use ($title): void {
@@ -542,7 +570,7 @@ if ($isPopup) {
 
   <div class="px-3 py-2 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 min-w-0 shrink-0">
     <div class="flex items-center gap-2 min-w-0" id="selectedInfoBlock">
-      <span class="material-symbols-outlined text-primary text-[18px] shrink-0"><?= $type === 'pickup' ? 'takeout_dining' : 'table_restaurant' ?></span>
+      <span class="material-symbols-outlined text-primary text-[18px] shrink-0"><?= $type === 'pickup' ? 'takeout_dining' : ($locParsed['area'] === 'room' ? 'meeting_room' : ($locParsed['area'] === 'tent' ? 'camping' : ($locParsed['area'] === 'bar' ? 'local_bar' : ($locParsed['area'] === 'garden' ? 'yard' : ($locParsed['area'] === 'ac' ? 'ac_unit' : 'table_restaurant'))))) ?></span>
       <div class="min-w-0">
         <span class="pos-billing-label block text-gray-500 uppercase tracking-wider font-bold">Selected</span>
         <span class="block text-xs font-bold text-gray-900 truncate" id="selectedLabelText"><?= ha_h($selectedLabel) ?></span>
@@ -962,6 +990,7 @@ if (AUTO_PRINT && window.history && window.history.replaceState) {
   } catch (e) {}
 }
 </script>
+<script src="js/click-sound.js"></script>
 
 <?php if ($isPopup): ?>
 </body></html>

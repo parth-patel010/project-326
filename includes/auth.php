@@ -335,5 +335,6 @@ function ha_layout_end(): void
       })();
     </script>';
     echo '<script src="js/order-notification.js" defer></script>';
+    echo '<script src="js/click-sound.js" defer></script>';
     echo '</body></html>';
 }

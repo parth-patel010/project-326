@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/menu_icons.php';
 ha_require_login();
 
 $hotelId = (int) $_SESSION['ha_hotel_id'];
@@ -22,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string) ($_POST['action'] ?? 'create');
     if ($action === 'create') {
         $name = trim((string) ($_POST['name'] ?? ''));
-        $icon = trim((string) ($_POST['icon'] ?? 'meal')) ?: 'meal';
+        $icon = ha_normalize_menu_icon((string) ($_POST['icon'] ?? 'meal'));
         $sort = (int) ($_POST['sort_order'] ?? 0);
         if ($name === '') {
             $error = 'Category name required';
@@ -47,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($action === 'update') {
         $id = (int) ($_POST['id'] ?? 0);
         $name = trim((string) ($_POST['name'] ?? ''));
-        $icon = trim((string) ($_POST['icon'] ?? 'meal')) ?: 'meal';
+        $icon = ha_normalize_menu_icon((string) ($_POST['icon'] ?? 'meal'));
         $sort = (int) ($_POST['sort_order'] ?? 0);
         $active = !empty($_POST['is_active']) ? 1 : 0;
         if ($id > 0 && $name !== '') {
@@ -102,7 +103,11 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
   <div class="grid grid-cols-1 sm:grid-cols-3 gap-x-4">
     <div class="sm:col-span-2"><label>Name</label><input class="input" name="name" required placeholder="e.g. Starters"></div>
     <div><label>Sort</label><input class="input" type="number" name="sort_order" value="0"></div>
-    <div><label>Icon key</label><input class="input" name="icon" value="meal" placeholder="meal"></div>
+    <div class="sm:col-span-3">
+      <label>Icon</label>
+      <?php ha_render_icon_select('icon', 'meal', 'input !mb-0'); ?>
+      <p class="muted !-mt-1 mb-3">Shown on the app category chips</p>
+    </div>
   </div>
   <button class="btn" type="submit"><span class="material-symbols-outlined text-[18px]">add</span> Add category</button>
 </form>
@@ -110,20 +115,30 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
 <div class="card !p-0 overflow-hidden">
   <div class="overflow-x-auto">
     <table>
-      <thead><tr><th>Name</th><th>Items</th><th>Sort</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>Name</th><th>Icon</th><th>Items</th><th>Sort</th><th>Status</th><th></th></tr></thead>
       <tbody>
-        <?php foreach ($rows as $r): ?>
+        <?php foreach ($rows as $r):
+            $rowIcon = ha_normalize_menu_icon((string) ($r['icon'] ?? 'meal'));
+        ?>
           <tr>
             <td>
-              <form method="post" class="flex flex-wrap items-end gap-2">
+              <form method="post" class="flex flex-wrap items-end gap-3">
                 <input type="hidden" name="action" value="update">
                 <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
                 <div class="min-w-[140px]"><label class="!text-xs">Name</label><input class="input !mb-0" name="name" value="<?= ha_h($r['name']) ?>"></div>
                 <div class="w-20"><label class="!text-xs">Sort</label><input class="input !mb-0" type="number" name="sort_order" value="<?= (int)$r['sort_order'] ?>"></div>
-                <div class="w-24"><label class="!text-xs">Icon</label><input class="input !mb-0" name="icon" value="<?= ha_h($r['icon']) ?>"></div>
+                <div class="min-w-[200px] flex-1">
+                  <label class="!text-xs">Icon</label>
+                  <?php ha_render_icon_select('icon', $rowIcon, 'input !mb-0 !py-2'); ?>
+                </div>
                 <label class="!mb-0 flex items-center gap-1 text-xs font-medium"><input type="checkbox" name="is_active" value="1" <?= !empty($r['is_active']) ? 'checked' : '' ?>> Active</label>
                 <button class="btn sm" type="submit">Save</button>
               </form>
+            </td>
+            <td>
+              <span class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-primary-soft text-primary">
+                <span class="material-symbols-outlined text-[20px]"><?= ha_h(ha_menu_icon_symbol($rowIcon)) ?></span>
+              </span>
             </td>
             <td><span class="badge badge-green"><?= (int)$r['item_count'] ?></span></td>
             <td class="muted"><?= (int)$r['sort_order'] ?></td>
@@ -144,7 +159,7 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
           </tr>
         <?php endforeach; ?>
         <?php if (!$rows): ?>
-          <tr><td colspan="5">
+          <tr><td colspan="6">
             <div class="empty-state">
               <span class="material-symbols-outlined">folder</span>
               <p>No categories yet — add your first section above</p>
@@ -155,4 +170,5 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
     </table>
   </div>
 </div>
+<?php ha_icon_pick_script(); ?>
 <?php ha_layout_end(); ?>

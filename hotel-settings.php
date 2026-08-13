@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/dining.php';
 require_once __DIR__ . '/api/lib/hotels.php';
 ha_require_login();
 
@@ -23,6 +24,18 @@ $cols = [
     'gst_number' => ha_col_exists('hotels', 'gst_number', $pdo),
     'service_charge_percent' => ha_col_exists('hotels', 'service_charge_percent', $pdo),
     'dining_total_tables' => ha_col_exists('hotels', 'dining_total_tables', $pdo),
+    'dining_has_tents' => ha_col_exists('hotels', 'dining_has_tents', $pdo),
+    'dining_total_tents' => ha_col_exists('hotels', 'dining_total_tents', $pdo),
+    'dining_has_garden_tables' => ha_col_exists('hotels', 'dining_has_garden_tables', $pdo),
+    'dining_total_garden_tables' => ha_col_exists('hotels', 'dining_total_garden_tables', $pdo),
+    'dining_has_bar_tables' => ha_col_exists('hotels', 'dining_has_bar_tables', $pdo),
+    'dining_total_bar_tables' => ha_col_exists('hotels', 'dining_total_bar_tables', $pdo),
+    'dining_has_rooms' => ha_col_exists('hotels', 'dining_has_rooms', $pdo),
+    'dining_total_rooms' => ha_col_exists('hotels', 'dining_total_rooms', $pdo),
+    'dining_room_labels' => ha_col_exists('hotels', 'dining_room_labels', $pdo),
+    'dining_has_ac_tables' => ha_col_exists('hotels', 'dining_has_ac_tables', $pdo),
+    'dining_total_ac_tables' => ha_col_exists('hotels', 'dining_total_ac_tables', $pdo),
+    'dining_has_counter' => ha_col_exists('hotels', 'dining_has_counter', $pdo),
     'operating_hours' => ha_col_exists('hotels', 'operating_hours', $pdo),
 ];
 
@@ -65,6 +78,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $gstNumber = strtoupper(trim((string) ($_POST['gst_number'] ?? '')));
     $servicePct = max(0, min(50, (float) ($_POST['service_charge_percent'] ?? 0)));
     $tableCount = max(1, min(200, (int) ($_POST['dining_total_tables'] ?? 12)));
+    $hasTents = !empty($_POST['dining_has_tents']) ? 1 : 0;
+    $tents = max(0, min(100, (int) ($_POST['dining_total_tents'] ?? 0)));
+    $hasGarden = !empty($_POST['dining_has_garden_tables']) ? 1 : 0;
+    $garden = max(0, min(100, (int) ($_POST['dining_total_garden_tables'] ?? 0)));
+    $hasBar = !empty($_POST['dining_has_bar_tables']) ? 1 : 0;
+    $bar = max(0, min(100, (int) ($_POST['dining_total_bar_tables'] ?? 0)));
+    $hasRooms = !empty($_POST['dining_has_rooms']) ? 1 : 0;
+    $rooms = max(0, min(50, (int) ($_POST['dining_total_rooms'] ?? 0)));
+    $hasAc = !empty($_POST['dining_has_ac_tables']) ? 1 : 0;
+    $ac = max(0, min(100, (int) ($_POST['dining_total_ac_tables'] ?? 0)));
+    $hasCounter = !empty($_POST['dining_has_counter']) ? 1 : 0;
+    $roomLabels = [];
+    if ($hasRooms) {
+        if (isset($_POST['room_label']) && is_array($_POST['room_label'])) {
+            foreach ($_POST['room_label'] as $num => $label) {
+                $n = (int) $num;
+                if ($n < 1 || $n > $rooms) {
+                    continue;
+                }
+                $lab = trim((string) $label);
+                if ($lab !== '') {
+                    $roomLabels[(string) $n] = $lab;
+                }
+            }
+        }
+        for ($i = 1; $i <= $rooms; $i++) {
+            $key = 'room_label_' . $i;
+            if (!isset($_POST[$key])) {
+                continue;
+            }
+            $lab = trim((string) $_POST[$key]);
+            if ($lab !== '') {
+                $roomLabels[(string) $i] = $lab;
+            }
+        }
+    }
 
     $hoursPayload = $defaultHours;
     if ($cols['operating_hours'] && isset($_POST['hours']) && is_array($_POST['hours'])) {
@@ -148,6 +197,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $sets[] = 'dining_total_tables = :tables';
                 $params[':tables'] = $tableCount;
             }
+            if ($cols['dining_has_tents']) {
+                $sets[] = 'dining_has_tents = :has_tents';
+                $params[':has_tents'] = $hasTents;
+            }
+            if ($cols['dining_total_tents']) {
+                $sets[] = 'dining_total_tents = :tents';
+                $params[':tents'] = $hasTents ? $tents : 0;
+            }
+            if ($cols['dining_has_garden_tables']) {
+                $sets[] = 'dining_has_garden_tables = :has_garden';
+                $params[':has_garden'] = $hasGarden;
+            }
+            if ($cols['dining_total_garden_tables']) {
+                $sets[] = 'dining_total_garden_tables = :garden';
+                $params[':garden'] = $hasGarden ? $garden : 0;
+            }
+            if ($cols['dining_has_bar_tables']) {
+                $sets[] = 'dining_has_bar_tables = :has_bar';
+                $params[':has_bar'] = $hasBar;
+            }
+            if ($cols['dining_total_bar_tables']) {
+                $sets[] = 'dining_total_bar_tables = :bar';
+                $params[':bar'] = $hasBar ? $bar : 0;
+            }
+            if ($cols['dining_has_rooms']) {
+                $sets[] = 'dining_has_rooms = :has_rooms';
+                $params[':has_rooms'] = $hasRooms;
+            }
+            if ($cols['dining_total_rooms']) {
+                $sets[] = 'dining_total_rooms = :rooms';
+                $params[':rooms'] = $hasRooms ? $rooms : 0;
+            }
+            if ($cols['dining_room_labels']) {
+                $sets[] = 'dining_room_labels = :room_labels';
+                $params[':room_labels'] = $hasRooms && $roomLabels !== [] ? json_encode($roomLabels) : null;
+            }
+            if ($cols['dining_has_ac_tables']) {
+                $sets[] = 'dining_has_ac_tables = :has_ac';
+                $params[':has_ac'] = $hasAc;
+            }
+            if ($cols['dining_total_ac_tables']) {
+                $sets[] = 'dining_total_ac_tables = :ac';
+                $params[':ac'] = $hasAc ? $ac : 0;
+            }
+            if ($cols['dining_has_counter']) {
+                $sets[] = 'dining_has_counter = :has_counter';
+                $params[':has_counter'] = $hasCounter;
+            }
             if ($cols['operating_hours']) {
                 $sets[] = 'operating_hours = :hours';
                 $params[':hours'] = json_encode($hoursPayload);
@@ -170,14 +267,14 @@ $mapUrl = ($latVal !== '' && $lngVal !== '')
     ? 'https://www.openstreetmap.org/?mlat=' . rawurlencode($latVal) . '&mlon=' . rawurlencode($lngVal) . '#map=17/' . rawurlencode($latVal) . '/' . rawurlencode($lngVal)
     : '';
 
-ha_layout_start('Hotel settings', 'hotel-settings.php', 'Profile, location, GST, tables, and kitchen');
+ha_layout_start('Hotel settings', 'hotel-settings.php', 'Profile, location, GST, dining floor, and kitchen');
 if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
 <?php if ($error): ?><div class="flash-error"><?= ha_h($error) ?></div><?php endif; ?>
 
 <div class="page-header">
   <div>
     <h2>Hotel settings</h2>
-    <p class="sub">Profile, location, GST, tables, and kitchen</p>
+    <p class="sub">Profile, location, GST, dining floor, and kitchen</p>
   </div>
 </div>
 
@@ -241,15 +338,6 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
       Current estimate: <strong><?= (int) $prepVal ?> min</strong>
       (default <?= (int) FM_DEFAULT_PREP_MINS ?> until 5 samples). Used for customer ETA.
     </p>
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
-      <?php if ($cols['dining_total_tables']): ?>
-        <div>
-          <label>Dining table count</label>
-          <input class="input" type="number" min="1" max="200" name="dining_total_tables" value="<?= (int)($hotel['dining_total_tables'] ?? 12) ?>">
-          <p class="muted !-mt-2 mb-3">Controls the POS floor map.</p>
-        </div>
-      <?php endif; ?>
-    </div>
     <div class="flex flex-wrap gap-4 mb-2">
       <label class="!mb-0 flex items-center gap-2 text-sm font-medium">
         <input type="checkbox" name="is_open" value="1" <?= !isset($hotel['is_open']) || !empty($hotel['is_open']) ? 'checked' : '' ?> <?= $cols['is_open'] ? '' : 'disabled' ?>>
@@ -261,6 +349,130 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
       </label>
     </div>
   </div>
+
+  <?php
+  $diningUiAvailable = $cols['dining_total_tables']
+      || $cols['dining_has_tents']
+      || $cols['dining_has_garden_tables']
+      || $cols['dining_has_bar_tables']
+      || $cols['dining_has_rooms']
+      || $cols['dining_has_ac_tables'];
+  $roomLabelsSaved = [];
+  if (!empty($hotel['dining_room_labels'])) {
+      $decodedLabels = is_array($hotel['dining_room_labels'])
+          ? $hotel['dining_room_labels']
+          : json_decode((string) $hotel['dining_room_labels'], true);
+      if (is_array($decodedLabels)) {
+          $roomLabelsSaved = $decodedLabels;
+      }
+  }
+  $roomsCountUi = max(0, (int) ($hotel['dining_total_rooms'] ?? 0));
+  ?>
+  <?php if ($diningUiAvailable): ?>
+  <div class="card">
+    <div class="card-header">
+      <h3>Dining settings</h3>
+      <button class="btn sm" type="submit"><span class="material-symbols-outlined text-[16px]">save</span> Save</button>
+    </div>
+    <p class="muted !mt-0 mb-4">Controls the POS floor map sections (tables, tents, garden, bar, rooms, AC).</p>
+
+    <?php if ($cols['dining_total_tables']): ?>
+    <div class="mb-4">
+      <label>Total tables <span class="text-red-500">*</span></label>
+      <input class="input" type="number" min="1" max="200" name="dining_total_tables" value="<?= (int)($hotel['dining_total_tables'] ?? 12) ?>" required>
+    </div>
+    <?php endif; ?>
+
+    <div class="space-y-3">
+      <?php if ($cols['dining_has_rooms']):
+          $hasRoomsUi = !empty($hotel['dining_has_rooms']);
+      ?>
+      <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
+        <div class="flex items-center justify-between gap-3 mb-2">
+          <div class="flex items-center gap-2 font-semibold text-sm text-gray-800">
+            <span class="material-symbols-outlined text-text-muted text-[20px]">meeting_room</span> Private rooms
+          </div>
+          <label class="!mb-0 inline-flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" name="dining_has_rooms" value="1" id="toggleRooms" <?= $hasRoomsUi ? 'checked' : '' ?> onchange="toggleDiningBlock('roomsBlock', this.checked)">
+            Enable
+          </label>
+        </div>
+        <div id="roomsBlock" class="<?= $hasRoomsUi ? '' : 'hidden' ?> space-y-3">
+          <?php if ($cols['dining_total_rooms']): ?>
+          <div>
+            <label class="!text-xs">Number of rooms</label>
+            <input class="input" type="number" min="0" max="50" name="dining_total_rooms" id="dining_total_rooms_input" value="<?= $roomsCountUi ?>" onchange="updateRoomLabelInputs(this.value)">
+          </div>
+          <?php endif; ?>
+          <?php if ($cols['dining_room_labels']): ?>
+          <div class="border-t border-gray-200 pt-3">
+            <p class="text-xs font-semibold text-gray-700 mb-2">Custom room labels (optional)</p>
+            <div id="roomLabelsContainer" class="space-y-2 max-h-60 overflow-y-auto">
+              <?php for ($i = 1; $i <= $roomsCountUi; $i++):
+                  $lab = (string) ($roomLabelsSaved[(string) $i] ?? $roomLabelsSaved[$i] ?? '');
+              ?>
+              <div class="flex items-center gap-2 room-label-row">
+                <span class="text-xs font-medium text-gray-600 w-16 shrink-0">Room <?= $i ?>:</span>
+                <input class="input !mb-0" type="text" name="room_label[<?= $i ?>]" value="<?= ha_h($lab) ?>" maxlength="50" placeholder="e.g. Deluxe Suite">
+              </div>
+              <?php endfor; ?>
+            </div>
+          </div>
+          <?php endif; ?>
+        </div>
+      </div>
+      <?php endif; ?>
+
+      <?php
+      $diningToggles = [
+          ['has' => 'dining_has_tents', 'count' => 'dining_total_tents', 'id' => 'tents', 'symbol' => 'camping', 'title' => 'Outdoor tents', 'countLabel' => 'Number of tents'],
+          ['has' => 'dining_has_ac_tables', 'count' => 'dining_total_ac_tables', 'id' => 'ac', 'symbol' => 'ac_unit', 'title' => 'AC tables', 'countLabel' => 'Number of AC tables'],
+          ['has' => 'dining_has_garden_tables', 'count' => 'dining_total_garden_tables', 'id' => 'garden', 'symbol' => 'yard', 'title' => 'Garden tables', 'countLabel' => 'Number of garden tables'],
+          ['has' => 'dining_has_bar_tables', 'count' => 'dining_total_bar_tables', 'id' => 'bar', 'symbol' => 'local_bar', 'title' => 'Bar tables', 'countLabel' => 'Number of bar tables'],
+      ];
+      foreach ($diningToggles as $tg):
+          if (!$cols[$tg['has']]) {
+              continue;
+          }
+          $on = !empty($hotel[$tg['has']]);
+          $cnt = (int) ($hotel[$tg['count']] ?? 0);
+      ?>
+      <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
+        <div class="flex items-center justify-between gap-3 mb-2">
+          <div class="flex items-center gap-2 font-semibold text-sm text-gray-800">
+            <span class="material-symbols-outlined text-text-muted text-[20px]"><?= ha_h($tg['symbol']) ?></span> <?= ha_h($tg['title']) ?>
+          </div>
+          <label class="!mb-0 inline-flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" name="<?= ha_h($tg['has']) ?>" value="1" <?= $on ? 'checked' : '' ?> onchange="toggleDiningBlock('<?= ha_h($tg['id']) ?>Block', this.checked)">
+            Enable
+          </label>
+        </div>
+        <?php if ($cols[$tg['count']]): ?>
+        <div id="<?= ha_h($tg['id']) ?>Block" class="<?= $on ? '' : 'hidden' ?>">
+          <label class="!text-xs"><?= ha_h($tg['countLabel']) ?></label>
+          <input class="input" type="number" min="0" max="100" name="<?= ha_h($tg['count']) ?>" value="<?= $cnt ?>">
+        </div>
+        <?php endif; ?>
+      </div>
+      <?php endforeach; ?>
+
+      <?php if ($cols['dining_has_counter']): ?>
+      <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2 font-semibold text-sm text-gray-800">
+            <span class="material-symbols-outlined text-text-muted text-[20px]">point_of_sale</span> Counter / walk-in
+          </div>
+          <label class="!mb-0 inline-flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" name="dining_has_counter" value="1" <?= !empty($hotel['dining_has_counter']) ? 'checked' : '' ?>>
+            Enable
+          </label>
+        </div>
+        <p class="muted !mb-0 mt-2 text-xs">Reserved for future counter billing on the floor map.</p>
+      </div>
+      <?php endif; ?>
+    </div>
+  </div>
+  <?php endif; ?>
 
   <?php if ($cols['gst_enabled'] || $cols['gst_percent'] || $cols['gst_number'] || $cols['service_charge_percent']): ?>
   <div class="card">
@@ -334,6 +546,32 @@ function toggleDayHours(cb){
   if (!inputs) return;
   if (cb.checked) { inputs.classList.remove('opacity-50','pointer-events-none'); }
   else { inputs.classList.add('opacity-50','pointer-events-none'); }
+}
+function toggleDiningBlock(id, on){
+  var el = document.getElementById(id);
+  if (!el) return;
+  if (on) el.classList.remove('hidden');
+  else el.classList.add('hidden');
+}
+function updateRoomLabelInputs(count){
+  var container = document.getElementById('roomLabelsContainer');
+  if (!container) return;
+  count = Math.max(0, Math.min(50, parseInt(count, 10) || 0));
+  var existing = {};
+  container.querySelectorAll('input[name^="room_label"]').forEach(function(inp){
+    var m = inp.name.match(/\[(\d+)\]/);
+    if (m) existing[m[1]] = inp.value;
+  });
+  container.innerHTML = '';
+  for (var i = 1; i <= count; i++) {
+    var row = document.createElement('div');
+    row.className = 'flex items-center gap-2 room-label-row';
+    row.innerHTML = '<span class="text-xs font-medium text-gray-600 w-16 shrink-0">Room ' + i + ':</span>'
+      + '<input class="input !mb-0" type="text" name="room_label[' + i + ']" value="'
+      + (existing[String(i)] || '').replace(/"/g, '&quot;')
+      + '" maxlength="50" placeholder="e.g. Deluxe Suite">';
+    container.appendChild(row);
+  }
 }
 </script>
 <?php ha_layout_end(); ?>

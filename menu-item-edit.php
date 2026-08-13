@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/menu_icons.php';
 ha_require_login();
 
 $hotelId = (int) $_SESSION['ha_hotel_id'];
@@ -31,7 +32,7 @@ if ($id > 0) {
     }
 }
 
-$cats = $pdo->prepare('SELECT id, name FROM menu_categories WHERE hotel_id=:h AND is_active=1 ORDER BY sort_order, name');
+$cats = $pdo->prepare('SELECT id, name, icon FROM menu_categories WHERE hotel_id=:h AND is_active=1 ORDER BY sort_order, name');
 $cats->execute([':h' => $hotelId]);
 $categories = $cats->fetchAll();
 
@@ -224,13 +225,28 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
       <div class="sm:col-span-2"><label>Name</label><input class="input" name="name" required maxlength="255" value="<?= ha_h($item['name'] ?? '') ?>"></div>
       <div class="sm:col-span-2"><label>Description</label><textarea class="input" name="description" rows="3" maxlength="1000"><?= ha_h($item['description'] ?? '') ?></textarea></div>
-      <div>
+      <div class="sm:col-span-2">
         <label>Category</label>
-        <select class="input" name="category_id" required>
-          <?php foreach ($categories as $c): ?>
-            <option value="<?= (int)$c['id'] ?>" <?= (int)($item['category_id'] ?? 0) === (int)$c['id'] ? 'selected' : '' ?>><?= ha_h($c['name']) ?></option>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3" id="categoryIconGrid">
+          <?php
+          $selectedCat = (int) ($item['category_id'] ?? ($categories[0]['id'] ?? 0));
+          foreach ($categories as $c):
+              $cIcon = ha_normalize_menu_icon((string) ($c['icon'] ?? 'meal'));
+              $cSym = ha_menu_icon_symbol($cIcon);
+              $isSel = $selectedCat === (int) $c['id'];
+          ?>
+            <label class="category-icon-option !mb-0 cursor-pointer rounded-xl border-2 p-3 flex items-center gap-3 transition <?= $isSel ? 'border-primary bg-primary-soft' : 'border-gray-200 bg-white hover:border-primary/40' ?>">
+              <input type="radio" name="category_id" value="<?= (int)$c['id'] ?>" class="sr-only" <?= $isSel ? 'checked' : '' ?> required>
+              <span class="w-10 h-10 rounded-lg bg-white border border-primary/10 text-primary flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-[22px]"><?= ha_h($cSym) ?></span>
+              </span>
+              <span class="min-w-0">
+                <span class="block text-sm font-semibold text-text-main truncate"><?= ha_h($c['name']) ?></span>
+                <span class="block text-[11px] text-text-muted capitalize"><?= ha_h($cIcon) ?></span>
+              </span>
+            </label>
           <?php endforeach; ?>
-        </select>
+        </div>
       </div>
       <div><label>Base price ₹</label><input class="input" type="number" step="0.01" min="1" name="price" required value="<?= ha_h((string)($item['price'] ?? '')) ?>"></div>
       <div class="sm:col-span-2"><label>Image URL</label><input class="input" name="image" value="<?= ha_h($item['image'] ?? '') ?>" placeholder="https://..."></div>
@@ -379,4 +395,22 @@ renderVariants();
 renderExtras();
 </script>
 <?php endif; ?>
+<script>
+(function(){
+  var grid = document.getElementById('categoryIconGrid');
+  if (!grid) return;
+  grid.addEventListener('change', function(e){
+    if (!e.target || e.target.name !== 'category_id') return;
+    grid.querySelectorAll('.category-icon-option').forEach(function(lab){
+      lab.classList.remove('border-primary','bg-primary-soft');
+      lab.classList.add('border-gray-200','bg-white');
+    });
+    var lab = e.target.closest('.category-icon-option');
+    if (lab) {
+      lab.classList.add('border-primary','bg-primary-soft');
+      lab.classList.remove('border-gray-200','bg-white');
+    }
+  });
+})();
+</script>
 <?php ha_layout_end(); ?>

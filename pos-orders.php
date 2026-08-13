@@ -3,15 +3,15 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/dining.php';
 ha_require_login();
 
 $hotelId = (int) $_SESSION['ha_hotel_id'];
 $pdo = admin_db();
 $hotel = ha_hotel() ?? [];
-$hasTables = ha_col_exists('hotels', 'dining_total_tables', $pdo);
 $hasOrderType = ha_col_exists('pos_orders', 'order_type', $pdo);
 $hasTableNo = ha_col_exists('pos_orders', 'table_no', $pdo);
-$tableCount = $hasTables ? max(1, (int) ($hotel['dining_total_tables'] ?? 12)) : 12;
+$sections = $hasTableNo ? ha_dining_sections($hotel, $pdo) : [];
 $flash = '';
 
 if (isset($_GET['clean']) && ctype_digit((string)$_GET['clean'])) {
@@ -34,7 +34,7 @@ if (isset($_GET['pickup'])) {
     exit;
 }
 
-$byTable = [];
+$byLoc = [];
 $pickupRows = [];
 try {
     if ($hasOrderType) {
@@ -50,13 +50,16 @@ try {
     }
     $open->execute([':h' => $hotelId]);
     foreach ($open->fetchAll() as $row) {
-        $t = $hasTableNo ? (string) ($row['table_no'] ?? '') : '';
-        if ($t === '' && !$hasTableNo) {
-            // Pre-migrate: show as open bills without floor map keys
+        $t = $hasTableNo ? trim((string) ($row['table_no'] ?? '')) : '';
+        if ($t === '') {
             continue;
         }
-        if ($t !== '' && !isset($byTable[$t])) {
-            $byTable[$t] = $row;
+        $parsed = ha_dining_parse_loc($t);
+        $locKey = $parsed['number'] > 0
+            ? ha_dining_loc_key($parsed['area'], $parsed['number'])
+            : $t;
+        if (!isset($byLoc[$locKey])) {
+            $byLoc[$locKey] = $row;
         }
     }
 
@@ -71,7 +74,6 @@ try {
     $flash = $flash ?: ('POS data unavailable until migrate: ' . $e->getMessage());
 }
 
-// Fallback list of open bills when table_no missing
 $openBills = [];
 if (!$hasTableNo) {
     try {
@@ -99,7 +101,7 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
 <div class="page-header">
   <div>
     <h2>Floor map</h2>
-    <p class="sub">Tap a table to open or continue a bill</p>
+    <p class="sub">Tap a seat to open or continue a bill</p>
   </div>
   <div class="flex flex-wrap gap-2">
     <a class="btn secondary sm" href="pos-orders.php"><span class="material-symbols-outlined text-[18px]">refresh</span> Refresh</a>
@@ -117,42 +119,55 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
   </div>
 </div>
 
-<?php if ($hasTableNo): ?>
-<p class="text-xs font-bold text-text-muted uppercase tracking-wider mb-3">Tables</p>
-<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-8">
-  <?php for ($i = 1; $i <= $tableCount; $i++):
-      $key = (string) $i;
-      $order = $byTable[$key] ?? null;
-      $cls = $order ? $statusColor((string)$order['status']) : 'bg-white border-gray-200 hover:border-primary text-text-main';
-      $href = $order
-          ? 'pos-billing.php?id=' . (int)$order['id'] . '&popup=1'
-          : 'pos-billing.php?type=dine_in&table=' . $i . '&popup=1';
-  ?>
-    <a href="<?= $href ?>" onclick="return openBilling(this.href)" class="rounded-xl border-2 p-4 shadow-sm transition hover:shadow-md <?= $cls ?> min-h-[120px] flex flex-col justify-between">
-      <div class="flex justify-between items-start gap-2">
-        <span class="text-2xl font-bold leading-none"><?= $i ?></span>
-        <?php if ($order): ?>
-          <span class="badge badge-gray !normal-case"><?= ha_h($order['status']) ?></span>
-        <?php endif; ?>
+<?php if ($hasTableNo && $sections): ?>
+  <?php foreach ($sections as $section): ?>
+    <div class="mb-8">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="material-symbols-outlined text-primary text-[20px]"><?= ha_h($section['symbol']) ?></span>
+        <p class="text-xs font-bold text-primary uppercase tracking-wider !mb-0"><?= ha_h($section['label']) ?></p>
+        <span class="text-[11px] text-text-muted font-medium"><?= (int) $section['count'] ?></span>
       </div>
-      <?php if ($order):
-          $items = json_decode((string)$order['items_json'], true) ?: [];
-          $qty = 0;
-          foreach ($items as $it) { $qty += (int)($it['qty'] ?? 1); }
-      ?>
-        <div>
-          <p class="text-sm font-semibold">₹<?= number_format((float)$order['total'], 0) ?></p>
-          <p class="text-xs opacity-80"><?= $qty ?> items · <?= ha_h($order['customer_name'] ?: 'Guest') ?></p>
-          <?php if (in_array($order['status'], ['paid','printed'], true)): ?>
-            <span class="inline-block mt-2 text-[11px] font-semibold underline" onclick="event.preventDefault();event.stopPropagation();location.href='?clean=<?= (int)$order['id'] ?>'">Clean table</span>
-          <?php endif; ?>
-        </div>
-      <?php else: ?>
-        <p class="text-xs text-text-muted">Tap to open bill</p>
-      <?php endif; ?>
-    </a>
-  <?php endfor; ?>
-</div>
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+        <?php for ($i = 1; $i <= (int) $section['count']; $i++):
+            $locKey = ha_dining_loc_key($section['key'], $i);
+            $tileLabel = ha_dining_display_label($section['key'], $i, $hotel);
+            $order = $byLoc[$locKey] ?? null;
+            $cls = $order ? $statusColor((string)$order['status']) : 'bg-white border-gray-200 hover:border-primary text-text-main';
+            $href = $order
+                ? 'pos-billing.php?id=' . (int)$order['id'] . '&popup=1'
+                : 'pos-billing.php?type=dine_in&area=' . rawurlencode($section['key']) . '&table=' . $i . '&popup=1';
+        ?>
+          <a href="<?= $href ?>" onclick="return openBilling(this.href)" class="rounded-xl border-2 p-4 shadow-sm transition hover:shadow-md <?= $cls ?> min-h-[120px] flex flex-col justify-between">
+            <div class="flex justify-between items-start gap-2">
+              <span class="text-xl font-bold leading-none"><?= ha_h($tileLabel) ?></span>
+              <?php if ($order): ?>
+                <span class="badge badge-gray !normal-case"><?= ha_h($order['status']) ?></span>
+              <?php endif; ?>
+            </div>
+            <?php if ($order):
+                $items = json_decode((string)$order['items_json'], true) ?: [];
+                $qty = 0;
+                foreach ($items as $it) { $qty += (int)($it['qty'] ?? 1); }
+            ?>
+              <div>
+                <p class="text-sm font-semibold">₹<?= number_format((float)$order['total'], 0) ?></p>
+                <p class="text-xs opacity-80"><?= $qty ?> items · <?= ha_h($order['customer_name'] ?: 'Guest') ?></p>
+                <?php if (in_array($order['status'], ['paid','printed'], true)): ?>
+                  <span class="inline-block mt-2 text-[11px] font-semibold underline" onclick="event.preventDefault();event.stopPropagation();location.href='?clean=<?= (int)$order['id'] ?>'">Clean</span>
+                <?php endif; ?>
+              </div>
+            <?php else: ?>
+              <p class="text-xs text-text-muted">Tap to open bill</p>
+            <?php endif; ?>
+          </a>
+        <?php endfor; ?>
+      </div>
+    </div>
+  <?php endforeach; ?>
+<?php elseif ($hasTableNo): ?>
+  <div class="card mb-6">
+    <p class="muted !mb-0">No dining sections configured. Set table count (and optional tents/rooms) in <a href="hotel-settings.php" class="underline font-semibold">Hotel settings</a>.</p>
+  </div>
 <?php else: ?>
 <div class="card mb-6">
   <p class="muted !mb-3">Floor map needs <code>migrate_hotel_pos_ops.php</code>. Showing open bills list instead.</p>
@@ -200,6 +215,5 @@ function openBilling(url) {
   }
   return false;
 }
-setTimeout(function(){ location.reload(); }, 20000);
 </script>
 <?php ha_layout_end(); ?>

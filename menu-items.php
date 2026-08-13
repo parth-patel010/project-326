@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/menu_icons.php';
 ha_require_login();
 
 $hotelId = (int) $_SESSION['ha_hotel_id'];
@@ -27,7 +28,7 @@ $cats = $pdo->prepare('SELECT id, name FROM menu_categories WHERE hotel_id=:h AN
 $cats->execute([':h' => $hotelId]);
 $categories = $cats->fetchAll();
 
-$sql = 'SELECT m.*, c.name AS category_name FROM menu_items m
+$sql = 'SELECT m.*, c.name AS category_name, c.icon AS category_icon FROM menu_items m
         LEFT JOIN menu_categories c ON c.id = m.category_id
         WHERE m.hotel_id = :h';
 $params = [':h' => $hotelId];
@@ -102,7 +103,17 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
                 </div>
               </div>
             </td>
-            <td><?= ha_h($r['category_name'] ?? '—') ?></td>
+            <td>
+              <?php
+                $listIcon = ha_normalize_menu_icon((string) ($r['category_icon'] ?? 'meal'));
+              ?>
+              <span class="inline-flex items-center gap-2">
+                <span class="w-8 h-8 rounded-lg bg-primary-soft text-primary inline-flex items-center justify-center shrink-0">
+                  <span class="material-symbols-outlined text-[18px]"><?= ha_h(ha_menu_icon_symbol($listIcon)) ?></span>
+                </span>
+                <span><?= ha_h($r['category_name'] ?? '—') ?></span>
+              </span>
+            </td>
             <td class="font-semibold">₹<?= number_format((float)$r['price'], 2) ?></td>
             <td>
               <?php if (!empty($r['is_available'])): ?>

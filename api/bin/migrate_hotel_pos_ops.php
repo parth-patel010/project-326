@@ -31,6 +31,18 @@ $hotelCols = [
     'gst_number' => 'VARCHAR(32) NULL',
     'service_charge_percent' => 'DECIMAL(5,2) NOT NULL DEFAULT 0',
     'dining_total_tables' => 'INT UNSIGNED NOT NULL DEFAULT 12',
+    'dining_has_tents' => 'TINYINT(1) NOT NULL DEFAULT 0',
+    'dining_total_tents' => 'INT UNSIGNED NOT NULL DEFAULT 0',
+    'dining_has_garden_tables' => 'TINYINT(1) NOT NULL DEFAULT 0',
+    'dining_total_garden_tables' => 'INT UNSIGNED NOT NULL DEFAULT 0',
+    'dining_has_bar_tables' => 'TINYINT(1) NOT NULL DEFAULT 0',
+    'dining_total_bar_tables' => 'INT UNSIGNED NOT NULL DEFAULT 0',
+    'dining_has_rooms' => 'TINYINT(1) NOT NULL DEFAULT 0',
+    'dining_total_rooms' => 'INT UNSIGNED NOT NULL DEFAULT 0',
+    'dining_room_labels' => 'JSON NULL',
+    'dining_has_ac_tables' => 'TINYINT(1) NOT NULL DEFAULT 0',
+    'dining_total_ac_tables' => 'INT UNSIGNED NOT NULL DEFAULT 0',
+    'dining_has_counter' => 'TINYINT(1) NOT NULL DEFAULT 0',
     'operating_hours' => 'JSON NULL',
 ];
 

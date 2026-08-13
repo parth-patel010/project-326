@@ -11,6 +11,18 @@ ALTER TABLE hotels ADD COLUMN gst_percent DECIMAL(5,2) NOT NULL DEFAULT 5.00;
 ALTER TABLE hotels ADD COLUMN gst_number VARCHAR(32) NULL;
 ALTER TABLE hotels ADD COLUMN service_charge_percent DECIMAL(5,2) NOT NULL DEFAULT 0;
 ALTER TABLE hotels ADD COLUMN dining_total_tables INT UNSIGNED NOT NULL DEFAULT 12;
+ALTER TABLE hotels ADD COLUMN dining_has_tents TINYINT(1) NOT NULL DEFAULT 0;
+ALTER TABLE hotels ADD COLUMN dining_total_tents INT UNSIGNED NOT NULL DEFAULT 0;
+ALTER TABLE hotels ADD COLUMN dining_has_garden_tables TINYINT(1) NOT NULL DEFAULT 0;
+ALTER TABLE hotels ADD COLUMN dining_total_garden_tables INT UNSIGNED NOT NULL DEFAULT 0;
+ALTER TABLE hotels ADD COLUMN dining_has_bar_tables TINYINT(1) NOT NULL DEFAULT 0;
+ALTER TABLE hotels ADD COLUMN dining_total_bar_tables INT UNSIGNED NOT NULL DEFAULT 0;
+ALTER TABLE hotels ADD COLUMN dining_has_rooms TINYINT(1) NOT NULL DEFAULT 0;
+ALTER TABLE hotels ADD COLUMN dining_total_rooms INT UNSIGNED NOT NULL DEFAULT 0;
+ALTER TABLE hotels ADD COLUMN dining_room_labels JSON NULL;
+ALTER TABLE hotels ADD COLUMN dining_has_ac_tables TINYINT(1) NOT NULL DEFAULT 0;
+ALTER TABLE hotels ADD COLUMN dining_total_ac_tables INT UNSIGNED NOT NULL DEFAULT 0;
+ALTER TABLE hotels ADD COLUMN dining_has_counter TINYINT(1) NOT NULL DEFAULT 0;
 ALTER TABLE hotels ADD COLUMN operating_hours JSON NULL;
 
 -- Menu item extras (EatnSay-like, FoodMitra stays pure veg)
