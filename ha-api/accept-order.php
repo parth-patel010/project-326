@@ -6,6 +6,9 @@ require_once dirname(__DIR__) . '/includes/auth.php';
 require_once dirname(__DIR__) . '/api/lib/Env.php';
 Env::load(dirname(__DIR__) . '/api/.env');
 require_once dirname(__DIR__) . '/api/lib/Realtime.php';
+require_once dirname(__DIR__) . '/api/lib/Settings.php';
+require_once dirname(__DIR__) . '/api/lib/H3.php';
+require_once dirname(__DIR__) . '/api/lib/Dispatch.php';
 require_once dirname(__DIR__) . '/api/lib/order_status.php';
 
 header('Content-Type: application/json');
@@ -63,10 +66,24 @@ try {
     // realtime optional
 }
 
+// Dispatch delivery offer + push as soon as hotel accepts
+$offeredPartnerId = null;
+try {
+    $fresh = $pdo->prepare('SELECT * FROM orders WHERE id = :id LIMIT 1');
+    $fresh->execute([':id' => $orderId]);
+    $row = $fresh->fetch();
+    if ($row && empty($row['assigned_partner_id']) && empty($row['delivery_offered_to'])) {
+        $offeredPartnerId = Dispatch::offerToNext($row);
+    }
+} catch (Throwable $e) {
+    // accept still succeeds even if no partner online
+}
+
 echo json_encode([
     'success' => true,
     'order_id' => $orderId,
     'public_id' => $order['public_id'],
     'status' => 'preparing',
+    'offered_partner_id' => $offeredPartnerId,
     'print_url' => 'print-online-kot.php?id=' . $orderId,
 ]);

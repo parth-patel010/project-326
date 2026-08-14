@@ -35,12 +35,13 @@ foreach ($all as $hotel) {
     if ($km > $maxKm) {
         continue;
     }
-    $travelMins = H3::approxMinutesFromKm($km);
+    $travelMins = H3::approxMinutesFromKm($km, 20.0);
     if (count($nearby) < 15) {
         $route = $osrm->route($lat, $lng, (float) $hotel['latitude'], (float) $hotel['longitude']);
         if (!empty($route['ok'])) {
             $km = (float) ($route['distance_km'] ?? $km);
-            $travelMins = (int) ($route['duration_min'] ?? $travelMins);
+            // Always convert distance → minutes at 20 km/h (ignore OSRM duration)
+            $travelMins = H3::approxMinutesFromKm($km, 20.0);
         }
     }
     // prep_mins from present_hotel = avg of last 5 order prep durations (default 19)

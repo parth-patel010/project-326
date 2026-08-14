@@ -76,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $gstEnabled = !empty($_POST['gst_enabled']) ? 1 : 0;
     $gstPercent = max(0, min(50, (float) ($_POST['gst_percent'] ?? 5)));
     $gstNumber = strtoupper(trim((string) ($_POST['gst_number'] ?? '')));
-    $servicePct = max(0, min(50, (float) ($_POST['service_charge_percent'] ?? 0)));
+    $servicePct = max(0, min(30, (float) ($_POST['service_charge_percent'] ?? 0)));
     $tableCount = max(1, min(200, (int) ($_POST['dining_total_tables'] ?? 12)));
     $hasTents = !empty($_POST['dining_has_tents']) ? 1 : 0;
     $tents = max(0, min(100, (int) ($_POST['dining_total_tents'] ?? 0)));
@@ -129,6 +129,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($name === '') {
         $error = 'Hotel name required';
+    } elseif ($gstEnabled && $cols['gst_number'] && $gstNumber === '') {
+        $error = 'GST Number is required when GST is enabled';
     } else {
         try {
             $prep = fm_hotel_prep_mins($pdo, $hotelId);
@@ -474,32 +476,74 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
   </div>
   <?php endif; ?>
 
-  <?php if ($cols['gst_enabled'] || $cols['gst_percent'] || $cols['gst_number'] || $cols['service_charge_percent']): ?>
+  <?php if ($cols['gst_enabled'] || $cols['gst_percent'] || $cols['gst_number'] || $cols['service_charge_percent']):
+      $gstOnSettings = !empty($hotel['gst_enabled']);
+  ?>
   <div class="card">
     <div class="card-header">
-      <h3>Tax & service charge</h3>
+      <h3><span class="material-symbols-outlined text-[18px] text-primary align-middle mr-1">percent</span> Tax management</h3>
       <button class="btn sm" type="submit"><span class="material-symbols-outlined text-[16px]">save</span> Save</button>
     </div>
-    <div class="flex flex-wrap gap-4 mb-3">
+
+    <div class="space-y-5">
       <?php if ($cols['gst_enabled']): ?>
-        <label class="!mb-0 flex items-center gap-2 text-sm font-medium">
-          <input type="checkbox" name="gst_enabled" value="1" <?= !empty($hotel['gst_enabled']) ? 'checked' : '' ?>>
-          GST enabled on POS bills
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <h4 class="text-sm font-bold text-gray-900 !mb-0.5">Enable GST</h4>
+          <p class="text-xs text-gray-500 !mb-0">Turn on GST to automatically add tax to menu prices and generate GST invoices</p>
+        </div>
+        <label class="!mb-0 inline-flex items-center gap-2 text-sm font-medium cursor-pointer">
+          <input type="checkbox" name="gst_enabled" value="1" id="toggleGst" <?= $gstOnSettings ? 'checked' : '' ?> onchange="toggleDiningBlock('gstInput', this.checked)">
+          Enable
         </label>
+      </div>
       <?php endif; ?>
-    </div>
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
-      <?php if ($cols['gst_percent']): ?>
-        <div><label>GST %</label><input class="input" type="number" step="0.01" min="0" max="50" name="gst_percent" value="<?= ha_h((string)($hotel['gst_percent'] ?? '5.00')) ?>"></div>
-      <?php endif; ?>
-      <?php if ($cols['gst_number']): ?>
-        <div><label>GSTIN</label><input class="input" name="gst_number" maxlength="32" value="<?= ha_h($hotel['gst_number'] ?? '') ?>" placeholder="22AAAAA0000A1Z5"></div>
-      <?php endif; ?>
+
+      <div id="gstInput" class="<?= $gstOnSettings || !$cols['gst_enabled'] ? '' : 'hidden' ?> space-y-4">
+        <?php if ($cols['gst_percent']): ?>
+        <div>
+          <label>GST Percentage <span class="text-red-500">*</span></label>
+          <div class="relative max-w-xs">
+            <input class="input !pr-8" type="number" step="0.01" min="0" max="50" name="gst_percent" value="<?= ha_h((string)($hotel['gst_percent'] ?? '5.00')) ?>">
+            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">%</span>
+          </div>
+        </div>
+        <?php endif; ?>
+        <?php if ($cols['gst_number']): ?>
+        <div>
+          <label>GST Number (GSTIN)</label>
+          <input class="input max-w-md" name="gst_number" maxlength="15" value="<?= ha_h($hotel['gst_number'] ?? '') ?>" placeholder="22AAAAA0000A1Z5">
+          <p class="muted !mb-0 text-xs">Printed on customer bills when GST is enabled</p>
+        </div>
+        <?php endif; ?>
+        <p class="muted !mb-0 text-xs">Common GST rates: 5%, 12%, 18%, 28%</p>
+      </div>
+
+      <hr class="border-gray-100">
+
       <?php if ($cols['service_charge_percent']): ?>
-        <div><label>Service charge %</label><input class="input" type="number" step="0.01" min="0" max="50" name="service_charge_percent" value="<?= ha_h((string)($hotel['service_charge_percent'] ?? '0')) ?>"></div>
+      <div>
+        <label>Service Charge (%)</label>
+        <div class="relative max-w-xs">
+          <input class="input !pr-8" type="number" step="0.01" min="0" max="30" name="service_charge_percent" value="<?= ha_h((string)($hotel['service_charge_percent'] ?? '0')) ?>" placeholder="0.00">
+          <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">%</span>
+        </div>
+        <p class="muted !mb-0 text-xs">Percentage between 0% – 30% applied to bill subtotal after discount</p>
+      </div>
       <?php endif; ?>
+
+      <div class="bg-blue-50 border border-blue-100 rounded-lg p-4">
+        <h5 class="flex items-center gap-2 text-sm font-bold text-blue-800 !mb-2">
+          <span class="material-symbols-outlined text-[18px]">info</span> How GST Works
+        </h5>
+        <ul class="text-xs text-blue-700 space-y-1.5 list-disc list-inside !mb-0">
+          <li>GST is added only on items marked “GST excluded” (inclusive items skip tax)</li>
+          <li>Bills show Taxable Amount + CGST + SGST separately</li>
+          <li>Final total includes GST and service charge</li>
+          <li>Example: ₹100 item + 5% GST = ₹105 total</li>
+        </ul>
+      </div>
     </div>
-    <p class="muted">GST is only added on items marked “GST excluded”. Inclusive items skip tax.</p>
   </div>
   <?php endif; ?>
 

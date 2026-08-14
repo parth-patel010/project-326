@@ -35,12 +35,12 @@ if ($lat !== 0.0 || $lng !== 0.0) {
     $hLng = $presented['longitude'] ?? null;
     if ($hLat !== null && $hLng !== null) {
         $km = H3::haversineKm($lat, $lng, (float) $hLat, (float) $hLng);
-        $travel = H3::approxMinutesFromKm($km);
+        $travel = H3::approxMinutesFromKm($km, 20.0);
         $osrm = new Osrm($CONFIG['osrm_base_url'] ?? null);
         $route = $osrm->route($lat, $lng, (float) $hLat, (float) $hLng);
         if (!empty($route['ok'])) {
             $km = (float) ($route['distance_km'] ?? $km);
-            $travel = (int) ($route['duration_min'] ?? $travel);
+            $travel = H3::approxMinutesFromKm($km, 20.0);
         }
         $presented['km'] = round($km, 2);
         $presented['travel_mins'] = $travel;

@@ -38,11 +38,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'status' => $newStatus,
             ], 'order:' . $order['public_id']);
 
+            // Offer + notify delivery partners when hotel accepts (preparing),
+            // not when kitchen marks ready.
+            if ($action === 'accept') {
+                $fresh = $pdo->prepare('SELECT * FROM orders WHERE id = :id');
+                $fresh->execute([':id' => $oid]);
+                $row = $fresh->fetch();
+                if ($row && empty($row['assigned_partner_id']) && empty($row['delivery_offered_to'])) {
+                    Dispatch::offerToNext($row);
+                }
+            }
+            // Safety net: older orders accepted before this change may still need a first offer
             if ($action === 'ready') {
                 $fresh = $pdo->prepare('SELECT * FROM orders WHERE id = :id');
                 $fresh->execute([':id' => $oid]);
                 $row = $fresh->fetch();
-                if ($row && empty($row['assigned_partner_id'])) {
+                if (
+                    $row
+                    && empty($row['assigned_partner_id'])
+                    && empty($row['delivery_offered_to'])
+                ) {
                     Dispatch::offerToNext($row);
                 }
             }

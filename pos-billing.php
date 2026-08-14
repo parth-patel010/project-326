@@ -604,9 +604,11 @@ if ($isPopup) {
       <input type="number" step="0.01" name="discount" id="discountInput" value="<?= ha_h((string)($order['discount'] ?? '0')) ?>" class="w-full mt-0.5 px-2 py-1 bg-white border border-gray-300 rounded-md text-sm outline-none focus:border-primary">
     </div>
     <div class="space-y-0.5 pos-bill-line mb-2 text-gray-600">
-      <div class="flex justify-between"><span>Subtotal</span><span id="tSub">&#8377;0</span></div>
-      <div class="flex justify-between <?= $gstEnabled ? '' : 'hidden' ?>"><span>Tax</span><span id="tTax">&#8377;0</span></div>
-      <div class="flex justify-between <?= $servicePercent > 0 ? '' : 'hidden' ?>"><span>Service</span><span id="tSvc">&#8377;0</span></div>
+      <div class="flex justify-between"><span>Total Amount</span><span id="tSub">&#8377;0</span></div>
+      <div class="flex justify-between <?= $gstEnabled ? '' : 'hidden' ?>"><span>Taxable</span><span id="tTaxable">&#8377;0</span></div>
+      <div class="flex justify-between <?= $gstEnabled ? '' : 'hidden' ?>"><span>CGST (<?= rtrim(rtrim(number_format($gstPercent / 2, 2), '0'), '.') ?>%)</span><span id="tCgst">&#8377;0</span></div>
+      <div class="flex justify-between <?= $gstEnabled ? '' : 'hidden' ?>"><span>SGST (<?= rtrim(rtrim(number_format($gstPercent / 2, 2), '0'), '.') ?>%)</span><span id="tSgst">&#8377;0</span></div>
+      <div class="flex justify-between <?= $servicePercent > 0 ? '' : 'hidden' ?>"><span>Service (<?= rtrim(rtrim(number_format($servicePercent, 2), '0'), '.') ?>%)</span><span id="tSvc">&#8377;0</span></div>
     </div>
     <div class="flex justify-between items-center mb-2 border-t border-dashed border-gray-300 pt-1.5">
       <span class="pos-bill-total-label font-bold text-gray-700">Total</span>
@@ -798,10 +800,17 @@ function recalc() {
   var after = Math.max(0, sub - disc);
   var taxBase = sub > 0 ? taxable * (after / sub) : 0;
   var tax = GST_ENABLED ? taxBase * (GST_PCT / 100) : 0;
+  var cgst = Math.round((tax / 2) * 100) / 100;
+  var sgst = Math.round((tax - cgst) * 100) / 100;
   var svc = after * (SVC_PCT / 100);
   var tot = after + tax + svc;
   document.getElementById('tSub').textContent = money2(sub);
-  document.getElementById('tTax').textContent = money2(tax);
+  var tTaxable = document.getElementById('tTaxable');
+  var tCgst = document.getElementById('tCgst');
+  var tSgst = document.getElementById('tSgst');
+  if (tTaxable) tTaxable.textContent = money2(taxBase);
+  if (tCgst) tCgst.textContent = money2(cgst);
+  if (tSgst) tSgst.textContent = money2(sgst);
   document.getElementById('tSvc').textContent = money2(svc);
   document.getElementById('tTot').textContent = money(tot);
   var mobTot = document.getElementById('mobileCartTotal');

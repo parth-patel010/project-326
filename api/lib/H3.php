@@ -72,10 +72,11 @@ final class H3
     }
 
     /**
-     * Approx travel minutes from straight-line km (urban fudge ~22 km/h avg).
+     * Travel minutes from distance at a fixed urban speed (20 km/h).
      */
-    public static function approxMinutesFromKm(float $km): int
+    public static function approxMinutesFromKm(float $km, float $speedKmh = 20.0): int
     {
-        return max(5, (int) ceil(($km / 22.0) * 60) + 5);
+        $speed = max(1.0, $speedKmh);
+        return max(1, (int) ceil(($km / $speed) * 60.0));
     }
 }

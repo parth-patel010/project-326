@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/H3.php';
 require_once __DIR__ . '/Settings.php';
+require_once __DIR__ . '/PartnerPush.php';
 
 /**
  * Exclusive delivery partner offer dispatch (60s lock).
@@ -98,11 +99,15 @@ final class Dispatch
              WHERE id = :id AND assigned_partner_id IS NULL'
         )->execute([':pid' => $partnerId, ':id' => $order['id']]);
 
+        $ttl = self::offerTtlSeconds();
         Realtime::emit('delivery.offer', [
             'order_id' => $order['public_id'],
             'partner_id' => $partnerId,
-            'ttl' => self::offerTtlSeconds(),
+            'ttl' => $ttl,
         ], 'partner:' . $partnerId);
+
+        // Push as soon as hotel accepts (offer created) — not when kitchen marks ready
+        PartnerPush::notifyNewOffer($partnerId, $order, $ttl);
 
         return $partnerId;
     }

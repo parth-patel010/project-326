@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../lib/orders.php';
 require_once __DIR__ . '/../lib/hotels.php';
+require_once __DIR__ . '/../lib/H3.php';
 require_once __DIR__ . '/../lib/Osrm.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
@@ -23,29 +24,80 @@ if (!$order) {
 
 $hotelLat = null;
 $hotelLng = null;
+$prepMins = FM_DEFAULT_PREP_MINS;
 if (!empty($order['hotel_db_id'])) {
     $h = find_hotel_by_id((int) $order['hotel_db_id']);
     if ($h) {
         $hotelLat = $h['latitude'] !== null ? (float) $h['latitude'] : null;
         $hotelLng = $h['longitude'] !== null ? (float) $h['longitude'] : null;
+        $prepMins = fm_hotel_prep_mins(db(), (int) $order['hotel_db_id']);
     }
+}
+if ($prepMins <= 0) {
+    $prepMins = FM_DEFAULT_PREP_MINS;
 }
 
 $custLat = $order['delivery_lat'] !== null ? (float) $order['delivery_lat'] : null;
 $custLng = $order['delivery_lng'] !== null ? (float) $order['delivery_lng'] : null;
-$partnerLat = $order['partner_lat'] !== null ? (float) $order['partner_lat'] : null;
-$partnerLng = $order['partner_lng'] !== null ? (float) $order['partner_lng'] : null;
+$partnerLat = isset($order['partner_lat']) && $order['partner_lat'] !== null
+    ? (float) $order['partner_lat']
+    : null;
+$partnerLng = isset($order['partner_lng']) && $order['partner_lng'] !== null
+    ? (float) $order['partner_lng']
+    : null;
 
 $route = null;
-if ($order['status'] === 'out_for_delivery' && $partnerLat && $custLat) {
+$distanceKm = null;
+if ($order['status'] === 'out_for_delivery' && $partnerLat && $partnerLng && $custLat && $custLng) {
     $route = (new Osrm())->route($partnerLat, $partnerLng, $custLat, $custLng);
-} elseif ($hotelLat && $custLat) {
+} elseif ($hotelLat && $hotelLng && $custLat && $custLng) {
     $route = (new Osrm())->route($hotelLat, $hotelLng, $custLat, $custLng);
 }
 
-$payload = [
+if ($route && !empty($route['ok'])) {
+    $distanceKm = (float) ($route['distance_km'] ?? 0);
+} elseif ($hotelLat && $hotelLng && $custLat && $custLng) {
+    $distanceKm = H3::haversineKm($hotelLat, $hotelLng, $custLat, $custLng);
+}
+
+// Delivery time always at 20 km/h from road/haversine distance
+$travelMins = $distanceKm !== null && $distanceKm > 0
+    ? H3::approxMinutesFromKm($distanceKm, 20.0)
+    : 15;
+
+if (is_array($route) && !empty($route['ok'])) {
+    $route['duration_min'] = $travelMins;
+    $route['speed_kmh'] = 20;
+}
+
+$totalMins = $prepMins + $travelMins;
+
+// Countdown starts when kitchen accepts (preparing), else paid/created
+$startRaw = $order['preparing_at']
+    ?? $order['paid_at']
+    ?? $order['created_at']
+    ?? null;
+$startTs = $startRaw ? strtotime((string) $startRaw) : false;
+if ($startTs === false) {
+    $startTs = time();
+}
+$expectedByTs = $startTs + ($totalMins * 60);
+$remainingSec = max(0, $expectedByTs - time());
+$isLate = !in_array((string) $order['status'], ['delivered', 'cancelled', 'payment_failed'], true)
+    && time() >= $expectedByTs;
+
+$presented = present_order($order);
+if (is_array($presented)) {
+    $presented['eta_minutes'] = $totalMins;
+    $presented['prep_mins'] = $prepMins;
+    $presented['travel_mins'] = $travelMins;
+    $presented['expected_by'] = date('c', $expectedByTs);
+    $presented['eta_start_at'] = date('c', $startTs);
+}
+
+respond([
     'ok' => true,
-    'order' => present_order($order),
+    'order' => $presented,
     'hotel' => [
         'name' => $order['restaurant_name'],
         'latitude' => $hotelLat,
@@ -60,10 +112,19 @@ $payload = [
         'longitude' => $partnerLng,
     ],
     'route' => $route,
+    'eta' => [
+        'prep_mins' => $prepMins,
+        'travel_mins' => $travelMins,
+        'total_mins' => $totalMins,
+        'distance_km' => $distanceKm !== null ? round($distanceKm, 2) : null,
+        'speed_kmh' => 20,
+        'expected_by' => date('c', $expectedByTs),
+        'eta_start_at' => date('c', $startTs),
+        'remaining_seconds' => $remainingSec,
+        'is_late' => $isLate,
+    ],
     // Customer only sees delivery OTP when out for delivery
     'delivery_otp' => ($order['status'] === 'out_for_delivery')
         ? ($order['delivery_otp'] ?? null)
         : null,
-];
-
-respond($payload);
+]);

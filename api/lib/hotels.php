@@ -30,7 +30,7 @@ function find_hotel_by_id(int $id): ?array
  *   - Preferred: orders.preparing_at → orders.ready_at
  *     (stamped when hotel accepts → preparing, then marks ready)
  *   - Fallback for older rows: COALESCE(paid_at, created_at) → delivery_offered_at
- *     (delivery_offered_at is set when ready triggers partner dispatch)
+ *     (delivery_offered_at is set when hotel accept triggers partner dispatch)
  *
  * Uses the last 5 ready+ orders with a usable duration (1–180 min).
  * Returns 19 if fewer than 5 samples.
