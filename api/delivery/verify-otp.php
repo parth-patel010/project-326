@@ -7,6 +7,7 @@ require_once __DIR__ . '/../lib/delivery_auth.php';
 require_once __DIR__ . '/../lib/orders.php';
 require_once __DIR__ . '/../lib/Settings.php';
 require_once __DIR__ . '/../lib/Realtime.php';
+require_once __DIR__ . '/../lib/PartnerEarning.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     fail('Method not allowed', 405);
@@ -88,14 +89,14 @@ if ($type === 'pickup') {
     db()->prepare('UPDATE orders SET ' . implode(', ', $sets) . ' WHERE id = :id')
         ->execute([':id' => $order['id']]);
 
-    $earn = ((int) ($order['partner_earn_paise'] ?? 0)) / 100;
+    $earn = PartnerEarning::amountRupees($order);
     db()->prepare(
         'UPDATE delivery_partners SET
            orders_completed = orders_completed + 1,
-           earnings_total = earnings_total + :earn,
            is_available = 1
          WHERE id = :id'
-    )->execute([':earn' => $earn, ':id' => $partner['id']]);
+    )->execute([':id' => $partner['id']]);
+    PartnerEarning::creditEarnWallet(db(), (int) $partner['id'], $earn);
 
     if (($order['payment_mode'] ?? '') === 'cod' && !empty(Settings::get()['cod_hold_enabled'])) {
         $amount = ((int) $order['total_paise']) / 100;

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/PartnerEarning.php';
 
 function find_order_by_public_id(string $publicId): ?array
 {
@@ -105,6 +106,11 @@ function present_order(?array $order): ?array
         'delivery_otp_verified' => (bool) ($order['delivery_otp_verified'] ?? 0),
         'eta_minutes' => $order['eta_minutes'] ?? null,
         'pickup_deadline_at' => $order['pickup_deadline_at'] ?? null,
+        'delivery_distance_km' => isset($order['delivery_distance_km']) ? (float) $order['delivery_distance_km'] : null,
+        'delivery_partner_revenue' => isset($order['delivery_partner_revenue']) ? (float) $order['delivery_partner_revenue'] : null,
+        'partner_earn' => PartnerEarning::amountRupees($order),
+        'delivery_earn' => PartnerEarning::amountRupees($order),
+        'partner_earn_paise' => (int) ($order['partner_earn_paise'] ?? 0),
         'items' => is_array($items) ? $items : [],
         'created_at' => $order['created_at'],
         'paid_at' => $order['paid_at'],

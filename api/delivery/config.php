@@ -10,7 +10,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 }
 
 $s = Settings::get();
-$partnerEarn = (float) ($s['partner_earn_fixed'] ?? 30);
+$partnerEarn = (float) ($s['platform_partner_per_order_revenue'] ?? 0);
+if ($partnerEarn <= 0) {
+    $partnerEarn = (float) ($s['partner_earn_fixed'] ?? 10);
+}
 
 respond([
     'ok' => true,

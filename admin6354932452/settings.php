@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $commission = (float) ($_POST['delivery_commission_percent'] ?? 3);
     $radius = (float) ($_POST['max_delivery_radius_km'] ?? 10);
     $partnerRadius = (float) ($_POST['default_partner_radius_km'] ?? 5);
-    $partnerEarn = (float) ($_POST['partner_earn_fixed'] ?? 30);
+    $partnerEarn = (float) ($_POST['partner_earn_fixed'] ?? 10);
     $codHold = !empty($_POST['cod_hold_enabled']) ? 1 : 0;
     $offerTtl = (int) ($_POST['offer_ttl_seconds'] ?? 60);
     $supportPhone = preg_replace('/\D+/', '', (string) ($_POST['delivery_support_phone'] ?? '')) ?? '';
@@ -71,6 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ];
 
         $optional = [
+            'platform_partner_per_order_revenue' => [':ppr', $partnerEarn],
             'delivery_support_phone' => [':sp', $supportPhone],
             'admin_contact_number' => [':ac', $adminContact],
             'payment_qr_url' => [':qr', $paymentQr !== '' ? $paymentQr : null],
@@ -121,8 +122,9 @@ if ($flash): ?><div class="flash"><?= sa_h($flash) ?></div><?php endif; ?>
       <input class="input" type="number" step="0.1" name="default_partner_radius_km" value="<?= sa_h((string)$s['default_partner_radius_km']) ?>">
     </div>
     <div>
-      <label>Partner earn fixed (₹ per order)</label>
-      <input class="input" type="number" step="0.01" name="partner_earn_fixed" value="<?= sa_h((string)($s['partner_earn_fixed'] ?? 30)) ?>">
+      <label>Partner earn rate (₹ per km)</label>
+      <input class="input" type="number" step="0.01" min="0" name="partner_earn_fixed" value="<?= sa_h((string)(($s['platform_partner_per_order_revenue'] ?? 0) > 0 ? $s['platform_partner_per_order_revenue'] : ($s['partner_earn_fixed'] ?? 10))) ?>">
+      <p class="muted !-mt-2 mb-3">Same as EatnSay: payout = hotel→customer km × this rate. Not the customer delivery fee.</p>
     </div>
     <div>
       <label>Offer TTL seconds</label>

@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/H3.php';
 require_once __DIR__ . '/Settings.php';
 require_once __DIR__ . '/PartnerPush.php';
+require_once __DIR__ . '/PartnerEarning.php';
 
 /**
  * Exclusive delivery partner offer dispatch (60s lock).
@@ -149,9 +150,9 @@ final class Dispatch
 
         $hotelOtp = (string) random_int(1000, 9999);
         $deliveryOtp = (string) random_int(1000, 9999);
-        $settings = Settings::get();
-        $earnFixed = (float) ($settings['partner_earn_fixed'] ?? 30);
-        $earnPaise = (int) round($earnFixed * 100);
+        $km = PartnerEarning::distanceKm($order);
+        $rate = PartnerEarning::ratePerKm($order);
+        $earnPaise = (int) round($km * $rate * 100);
 
         // Pickup deadline: approx from partner → hotel
         $deadlineMin = 20;
@@ -198,6 +199,31 @@ final class Dispatch
             ':mins' => $deadlineMin,
             ':id' => $order['id'],
         ]);
+
+        try {
+            $extra = [];
+            $chk = db()->query("SHOW COLUMNS FROM orders LIKE 'delivery_distance_km'")->fetch();
+            if ($chk) {
+                $extra[] = 'delivery_distance_km = :km';
+            }
+            $chk2 = db()->query("SHOW COLUMNS FROM orders LIKE 'delivery_partner_revenue'")->fetch();
+            if ($chk2) {
+                $extra[] = 'delivery_partner_revenue = :rate';
+            }
+            if ($extra) {
+                $params = [':id' => $order['id']];
+                if (str_contains(implode(',', $extra), ':km')) {
+                    $params[':km'] = round($km, 3);
+                }
+                if (str_contains(implode(',', $extra), ':rate')) {
+                    $params[':rate'] = $rate;
+                }
+                db()->prepare('UPDATE orders SET ' . implode(', ', $extra) . ' WHERE id = :id')
+                    ->execute($params);
+            }
+        } catch (Throwable $e) {
+            // snapshot columns optional
+        }
 
         Realtime::emit('order.status', [
             'order_id' => $order['public_id'],

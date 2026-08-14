@@ -72,6 +72,7 @@ function present_partner(array $p): array
         'has_insurance' => (bool) $p['has_insurance'],
         'orders_completed' => (int) $p['orders_completed'],
         'earnings_total' => (float) $p['earnings_total'],
+        'earn_wallet' => (float) ($p['earn_wallet'] ?? $p['earnings_total'] ?? 0),
         'cod_wallet' => (float) $p['cod_wallet'],
         'latitude' => $p['current_latitude'] !== null ? (float) $p['current_latitude'] : null,
         'longitude' => $p['current_longitude'] !== null ? (float) $p['current_longitude'] : null,
