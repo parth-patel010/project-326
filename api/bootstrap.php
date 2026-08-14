@@ -56,7 +56,9 @@ header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-API-Key, X-Partner-Token');
 header('Access-Control-Expose-Headers: X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset');
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+$isCli = PHP_SAPI === 'cli' || PHP_SAPI === 'phpdbg';
+
+if (!$isCli && ($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
     http_response_code(204);
     exit;
 }
@@ -133,8 +135,8 @@ function hash_otp(string $phone, string $otp, string $purpose): string
     return hash('sha256', $pepper . '|' . $phone . '|' . $purpose . '|' . $otp);
 }
 
-// Security middleware (API key + rate limit). Skip for Razorpay webhooks.
-if (!defined('FM_SKIP_SECURITY') || !FM_SKIP_SECURITY) {
+// Security middleware (API key + rate limit). Skip for CLI, Razorpay webhooks.
+if (!$isCli && (!defined('FM_SKIP_SECURITY') || !FM_SKIP_SECURITY)) {
     require_once __DIR__ . '/middleware/security.php';
     fm_apply_security();
 }

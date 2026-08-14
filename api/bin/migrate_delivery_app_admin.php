@@ -7,18 +7,18 @@ declare(strict_types=1);
  *
  *   php bin/migrate_delivery_app_admin.php
  */
+require_once __DIR__ . '/../lib/admin_db.php';
 
-require_once dirname(__DIR__) . '/bootstrap.php';
+$pdo = admin_db();
+$dbName = Env::get('DB_NAME', 'foodmitra');
 
-$pdo = db();
-
-function fm_has_column(PDO $pdo, string $table, string $column): bool
+function fm_has_column(PDO $pdo, string $db, string $table, string $column): bool
 {
     $stmt = $pdo->prepare(
         'SELECT COUNT(*) FROM information_schema.COLUMNS
-         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :t AND COLUMN_NAME = :c'
+         WHERE TABLE_SCHEMA = :db AND TABLE_NAME = :t AND COLUMN_NAME = :c'
     );
-    $stmt->execute([':t' => $table, ':c' => $column]);
+    $stmt->execute([':db' => $db, ':t' => $table, ':c' => $column]);
     return (int) $stmt->fetchColumn() > 0;
 }
 
@@ -34,7 +34,7 @@ $cols = [
 ];
 
 foreach ($cols as $name => $def) {
-    if (fm_has_column($pdo, 'admin_settings', $name)) {
+    if (fm_has_column($pdo, $dbName, 'admin_settings', $name)) {
         echo "skip column admin_settings.$name\n";
         continue;
     }
