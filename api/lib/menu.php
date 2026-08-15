@@ -22,11 +22,22 @@ function present_menu_item(?array $item): ?array
     if (!$item) {
         return null;
     }
+    $discount = isset($item['discount_price']) && $item['discount_price'] !== null
+        ? (float) $item['discount_price']
+        : null;
+    $offerType = (string) ($item['offer_type'] ?? 'none');
+    if ($offerType === '') {
+        $offerType = 'none';
+    }
     return [
         'id' => $item['public_id'],
         'hotel_id' => $item['hotel_public_id'] ?? null,
         'name' => $item['name'],
         'price' => (float) $item['price'],
+        'discount_price' => $discount,
+        'offer_type' => $offerType,
+        'buy_qty' => (int) ($item['buy_qty'] ?? 1),
+        'get_qty' => (int) ($item['get_qty'] ?? 0),
         'image' => $item['image'],
         'veg' => (bool) $item['is_veg'],
         'categoryId' => $item['category_slug'] ?? null,

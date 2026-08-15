@@ -34,7 +34,8 @@ foreach ($items as $item) {
     }
     $linePaise = rupees_to_paise($price) * $qty;
     $subtotalPaise += $linePaise;
-    $normalizedItems[] = [
+    $itemNote = trim((string) ($item['note'] ?? $item['special_note'] ?? $item['instructions'] ?? ''));
+    $row = [
         'id' => $id,
         'name' => $name,
         'price' => $price,
@@ -42,6 +43,10 @@ foreach ($items as $item) {
         'image' => $item['image'] ?? null,
         'veg' => !empty($item['veg']),
     ];
+    if ($itemNote !== '') {
+        $row['note'] = $itemNote;
+    }
+    $normalizedItems[] = $row;
 }
 
 $deliveryFeePaise = rupees_to_paise($body['delivery_fee'] ?? 29);

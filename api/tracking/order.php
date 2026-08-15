@@ -46,16 +46,36 @@ $partnerLng = isset($order['partner_lng']) && $order['partner_lng'] !== null
     ? (float) $order['partner_lng']
     : null;
 
+$status = (string) ($order['status'] ?? '');
+$outForDelivery = $status === 'out_for_delivery';
+$hasPartner =
+    !empty($order['assigned_partner_id'])
+    || ($partnerLat !== null && $partnerLng !== null);
+$partnerAssigned = $hasPartner
+    && !in_array($status, ['delivered', 'cancelled', 'payment_failed', 'awaiting_payment'], true);
+
+// Phase A (accepted…ready): show hotel + customer + partner pin, NO route polyline.
+// Phase B (out_for_delivery): hide hotel, live partner→customer route.
 $route = null;
 $distanceKm = null;
-if ($order['status'] === 'out_for_delivery' && $partnerLat && $partnerLng && $custLat && $custLng) {
+$mapHotelLat = $outForDelivery ? null : $hotelLat;
+$mapHotelLng = $outForDelivery ? null : $hotelLng;
+
+if ($outForDelivery && $partnerLat && $partnerLng && $custLat && $custLng) {
     $route = (new Osrm())->route($partnerLat, $partnerLng, $custLat, $custLng);
-} elseif ($hotelLat && $hotelLng && $custLat && $custLng) {
+} elseif (!$partnerAssigned && $hotelLat && $hotelLng && $custLat && $custLng) {
+    // Pre-accept: hotel→customer route for ETA only (still returned; clients may ignore pre-partner)
     $route = (new Osrm())->route($hotelLat, $hotelLng, $custLat, $custLng);
+}
+
+if ($partnerAssigned && !$outForDelivery) {
+    $route = null;
 }
 
 if ($route && !empty($route['ok'])) {
     $distanceKm = (float) ($route['distance_km'] ?? 0);
+} elseif ($outForDelivery && $partnerLat && $partnerLng && $custLat && $custLng) {
+    $distanceKm = H3::haversineKm($partnerLat, $partnerLng, $custLat, $custLng);
 } elseif ($hotelLat && $hotelLng && $custLat && $custLng) {
     $distanceKm = H3::haversineKm($hotelLat, $hotelLng, $custLat, $custLng);
 }
@@ -98,10 +118,11 @@ if (is_array($presented)) {
 respond([
     'ok' => true,
     'order' => $presented,
+    'phase' => $outForDelivery ? 'out_for_delivery' : ($partnerAssigned ? 'partner_accepted' : 'pre_partner'),
     'hotel' => [
         'name' => $order['restaurant_name'],
-        'latitude' => $hotelLat,
-        'longitude' => $hotelLng,
+        'latitude' => $mapHotelLat,
+        'longitude' => $mapHotelLng,
     ],
     'customer' => [
         'latitude' => $custLat,
@@ -124,7 +145,7 @@ respond([
         'is_late' => $isLate,
     ],
     // Customer only sees delivery OTP when out for delivery
-    'delivery_otp' => ($order['status'] === 'out_for_delivery')
+    'delivery_otp' => $outForDelivery
         ? ($order['delivery_otp'] ?? null)
         : null,
 ]);

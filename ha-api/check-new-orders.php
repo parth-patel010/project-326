@@ -37,6 +37,8 @@ try {
         if (!is_array($items)) {
             $items = [];
         }
+        // orders.note → cooking_request for popup "Cooking instructions"
+        $cookingRequest = trim((string) ($row['note'] ?? ''));
         $deliveryOrders[] = [
             'order_id' => (int) $row['id'],
             'order_number' => (string) $row['public_id'],
@@ -46,7 +48,8 @@ try {
                 ((string) ($row['delivery_label'] ?? '')) . ': ' . ((string) ($row['delivery_line'] ?? ''))
             ),
             'delivery_details' => (string) ($row['delivery_details'] ?? ''),
-            'cooking_request' => (string) ($row['note'] ?? ''),
+            'note' => $cookingRequest,
+            'cooking_request' => $cookingRequest,
             'payment_method' => (string) ($row['payment_mode'] ?? ''),
             'status' => (string) $row['status'],
             'items' => $items,

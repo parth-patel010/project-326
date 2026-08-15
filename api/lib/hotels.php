@@ -141,6 +141,7 @@ function present_hotel(?array $hotel): ?array
         'id' => $hotel['public_id'],
         'name' => $hotel['name'],
         'image' => $hotel['image'],
+        'cover_image_url' => $hotel['cover_image_url'] ?? null,
         'rating' => (float) $hotel['rating'],
         'rating_count' => (int) $hotel['rating_count'],
         'area' => $hotel['area'],

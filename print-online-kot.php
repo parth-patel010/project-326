@@ -27,6 +27,9 @@ $totalQty = 0;
 foreach ($items as $it) {
     $totalQty += (int) ($it['qty'] ?? 1);
 }
+$orderNote = trim((string) ($order['note'] ?? ''));
+$hasNoCutleryCol = array_key_exists('no_cutlery', $order);
+$noCutlery = $hasNoCutleryCol && !empty($order['no_cutlery']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -56,13 +59,21 @@ foreach ($items as $it) {
   <?php if (!empty($order['delivery_line'])): ?>
     <p><?= htmlspecialchars((string) ($order['delivery_label'] ?? '')) ?>: <?= htmlspecialchars((string) $order['delivery_line']) ?></p>
   <?php endif; ?>
-  <?php if (!empty($order['note'])): ?><p>Note: <?= htmlspecialchars((string) $order['note']) ?></p><?php endif; ?>
+  <?php if ($orderNote !== ''): ?><p><strong>Note:</strong> <?= htmlspecialchars($orderNote) ?></p><?php endif; ?>
+  <?php if ($hasNoCutleryCol): ?>
+    <p><strong>Cutlery:</strong> <?= $noCutlery ? 'NO CUTLERY' : 'Include cutlery' ?></p>
+  <?php endif; ?>
   <div class="dash"></div>
   <table>
     <tr><td><strong>Item</strong></td><td class="r"><strong>Qty</strong></td></tr>
-    <?php foreach ($items as $i => $it): ?>
+    <?php foreach ($items as $i => $it):
+      $itemNote = trim((string) ($it['note'] ?? $it['special_note'] ?? $it['instructions'] ?? ''));
+    ?>
       <tr>
-        <td><?= ($i + 1) ?>. <?= htmlspecialchars((string) ($it['name'] ?? 'Item')) ?></td>
+        <td>
+          <?= ($i + 1) ?>. <?= htmlspecialchars((string) ($it['name'] ?? 'Item')) ?>
+          <?php if ($itemNote !== ''): ?><br><em>Note: <?= htmlspecialchars($itemNote) ?></em><?php endif; ?>
+        </td>
         <td class="r big"><?= (int) ($it['qty'] ?? 1) ?></td>
       </tr>
     <?php endforeach; ?>

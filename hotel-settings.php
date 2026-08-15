@@ -37,6 +37,7 @@ $cols = [
     'dining_total_ac_tables' => ha_col_exists('hotels', 'dining_total_ac_tables', $pdo),
     'dining_has_counter' => ha_col_exists('hotels', 'dining_has_counter', $pdo),
     'operating_hours' => ha_col_exists('hotels', 'operating_hours', $pdo),
+    'cover_image_url' => ha_col_exists('hotels', 'cover_image_url', $pdo),
 ];
 
 $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -65,6 +66,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $description = trim((string) ($_POST['description'] ?? ''));
     $phone = trim((string) ($_POST['phone'] ?? ''));
     $image = trim((string) ($_POST['image'] ?? ''));
+    $coverUrlInput = trim((string) ($_POST['cover_image_url'] ?? ''));
+    $coverPath = (string) ($hotel['cover_image_url'] ?? '');
     $tags = trim((string) ($_POST['tags'] ?? ''));
     $latRaw = trim((string) ($_POST['latitude'] ?? ''));
     $lngRaw = trim((string) ($_POST['longitude'] ?? ''));
@@ -133,6 +136,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'GST Number is required when GST is enabled';
     } else {
         try {
+            if ($cols['cover_image_url'] && !empty($_FILES['cover_image']['tmp_name']) && is_uploaded_file((string) $_FILES['cover_image']['tmp_name'])) {
+                $file = $_FILES['cover_image'];
+                $errCode = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
+                if ($errCode !== UPLOAD_ERR_OK) {
+                    throw new RuntimeException('Cover image upload failed');
+                }
+                if ((int) ($file['size'] ?? 0) > 2 * 1024 * 1024) {
+                    throw new RuntimeException('Cover image must be 2MB or smaller');
+                }
+                $finfo = new finfo(FILEINFO_MIME_TYPE);
+                $mime = (string) $finfo->file((string) $file['tmp_name']);
+                $extMap = ['image/jpeg' => 'jpg', 'image/png' => 'png'];
+                if (!isset($extMap[$mime])) {
+                    throw new RuntimeException('Cover image must be JPG or PNG');
+                }
+                $dir = __DIR__ . '/uploads/hotel_covers';
+                if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
+                    throw new RuntimeException('Could not create cover upload directory');
+                }
+                $rel = 'uploads/hotel_covers/cover_' . $hotelId . '_' . time() . '.' . $extMap[$mime];
+                $dest = __DIR__ . '/' . $rel;
+                if (!move_uploaded_file((string) $file['tmp_name'], $dest)) {
+                    throw new RuntimeException('Failed to save cover image');
+                }
+                $coverPath = $rel;
+            } elseif ($cols['cover_image_url'] && $coverUrlInput !== '') {
+                $coverPath = $coverUrlInput;
+            } elseif ($cols['cover_image_url'] && !empty($_POST['clear_cover_image'])) {
+                $coverPath = '';
+            }
+
             $prep = fm_hotel_prep_mins($pdo, $hotelId);
 
             $sets = [
@@ -251,6 +285,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $sets[] = 'operating_hours = :hours';
                 $params[':hours'] = json_encode($hoursPayload);
             }
+            if ($cols['cover_image_url']) {
+                $sets[] = 'cover_image_url = :cover';
+                $params[':cover'] = $coverPath !== '' ? $coverPath : null;
+            }
 
             $pdo->prepare('UPDATE hotels SET ' . implode(', ', $sets) . ' WHERE id = :id')->execute($params);
             $flash = 'Settings saved';
@@ -280,7 +318,7 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
   </div>
 </div>
 
-<form method="post" class="space-y-4 max-w-3xl">
+<form method="post" enctype="multipart/form-data" class="space-y-4 max-w-3xl">
   <div class="card">
     <div class="card-header">
       <h3>Profile</h3>
@@ -302,7 +340,30 @@ if ($flash): ?><div class="flash"><?= ha_h($flash) ?></div><?php endif; ?>
         <div><label>Phone</label><input class="input" name="phone" type="tel" maxlength="15" value="<?= ha_h($hotel['phone'] ?? '') ?>" placeholder="10-digit mobile"></div>
       <?php endif; ?>
       <div><label>Avg price ₹</label><input class="input" type="number" step="1" name="avg_price" value="<?= ha_h((string)($hotel['avg_price'] ?? '200')) ?>"></div>
-      <div class="sm:col-span-2"><label>Image URL</label><input class="input" name="image" value="<?= ha_h($hotel['image'] ?? '') ?>"></div>
+      <div class="sm:col-span-2"><label>Logo / thumbnail URL</label><input class="input" name="image" value="<?= ha_h($hotel['image'] ?? '') ?>" placeholder="Used as app list thumbnail"></div>
+      <?php if ($cols['cover_image_url']):
+          $coverCurrent = trim((string) ($hotel['cover_image_url'] ?? ''));
+          $coverPreview = $coverCurrent;
+          if ($coverPreview !== '' && !preg_match('#^https?://#i', $coverPreview)) {
+              $coverPreview = $coverPreview;
+          }
+      ?>
+      <div class="sm:col-span-2">
+        <label>Cover image</label>
+        <p class="muted !mt-0 mb-2">Wide banner for restaurant detail. Upload JPG/PNG ≤2MB, or paste a URL.</p>
+        <?php if ($coverCurrent !== ''): ?>
+          <div class="mb-3 rounded-xl overflow-hidden border border-gray-100 bg-gray-50 max-w-xl">
+            <img src="<?= ha_h($coverPreview) ?>" alt="Current cover" class="w-full h-40 object-cover" onerror="this.style.display='none'">
+          </div>
+          <label class="!mb-3 flex items-center gap-2 text-sm font-medium">
+            <input type="checkbox" name="clear_cover_image" value="1"> Clear current cover
+          </label>
+        <?php endif; ?>
+        <input class="input" type="file" name="cover_image" accept="image/jpeg,image/png,.jpg,.jpeg,.png">
+        <label class="mt-2">Or cover image URL</label>
+        <input class="input" name="cover_image_url" value="<?= ha_h($coverCurrent) ?>" placeholder="https://… or uploads/hotel_covers/…">
+      </div>
+      <?php endif; ?>
       <div class="sm:col-span-2"><label>Tags</label><input class="input" name="tags" value="<?= ha_h($hotel['tags'] ?? '') ?>" placeholder="Gujarati • Thali • Pure veg"></div>
     </div>
   </div>

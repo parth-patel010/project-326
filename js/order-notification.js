@@ -348,6 +348,7 @@
         var qty = cartItem.qty || cartItem.quantity || 1;
         var price = Number(cartItem.price || 0);
         var line = Math.round(price * qty);
+        var itemNote = cartItem.note || cartItem.special_note || cartItem.instructions || '';
         itemsList.insertAdjacentHTML(
           'beforeend',
           '<div class="flex items-start bg-white p-3 rounded-lg border border-gray-100 shadow-sm">' +
@@ -356,7 +357,11 @@
             'x</span>' +
             '<div class="flex-1 min-w-0"><p class="text-sm font-semibold text-gray-800 leading-tight">' +
             escapeHtml(String(name)) +
-            '</p></div>' +
+            '</p>' +
+            (itemNote
+              ? '<p class="text-xs text-amber-700 mt-1">Note: ' + escapeHtml(String(itemNote)) + '</p>'
+              : '') +
+            '</div>' +
             '<span class="text-sm font-bold text-gray-900 ml-2">₹' +
             line +
             '</span></div>'
@@ -364,7 +369,7 @@
       });
     } catch (e) {}
 
-    var note = order.cooking_request || '';
+    var note = order.cooking_request || order.note || '';
     var instContainer = document.getElementById('notifyInstructionsContainer');
     if (note) {
       document.getElementById('notifyInstructionsText').textContent = note;

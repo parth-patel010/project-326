@@ -10,6 +10,7 @@ $nav = [
         'items' => [
             ['href' => 'dashboard.php', 'icon' => 'dashboard', 'label' => 'Dashboard'],
             ['href' => 'online-orders.php', 'icon' => 'smartphone', 'label' => 'Online Orders'],
+            ['href' => 'users.php', 'icon' => 'group', 'label' => 'Customers'],
         ],
     ],
     [
@@ -32,6 +33,12 @@ $nav = [
             ['href' => 'hotel-payouts.php', 'icon' => 'payments', 'label' => 'Hotel Payouts'],
             ['href' => 'partner-payouts.php', 'icon' => 'account_balance_wallet', 'label' => 'Partner Payouts'],
             ['href' => 'cod-holds.php', 'icon' => 'savings', 'label' => 'COD Holds'],
+        ],
+    ],
+    [
+        'label' => 'Marketing',
+        'items' => [
+            ['href' => 'user-notifications.php', 'icon' => 'campaign', 'label' => 'User notifications'],
         ],
     ],
     [
